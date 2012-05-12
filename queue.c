@@ -1,4 +1,6 @@
 #include "pq.h"
+#include "synchronize.h"
+#include "preparation.h"
 #include "config.h"
 
 #include <math.h>
@@ -120,16 +122,16 @@ static uint8_t getNumQueued(void) {
   return numQueued;
 }
 
-int
-main (int argc, char ** argv)
-{
-  assert(argc==2);
+static void* queueChecker(void* arg) {
+  for(;;) {
+    fillQueue(queueHighestRated);
+    waitUntilQueueNeeded();
+  }
+}
 
+void queueSetup(void) {
   randomSource = open("/dev/urandom",O_RDONLY);
-  struct {
-    const char* name;
-    const char* query;
-  } queries[] = {
+  preparation_t queries[] = {
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
     { "bestSongRange",
@@ -144,25 +146,15 @@ main (int argc, char ** argv)
       "INSERT INTO queue (recording) VALUES ($1)"}
   };
 
-  PQinit();
+  prepareQueries(queries);
 
-  int i;
-  for(i=0;i<sizeof(queries)/sizeof(char*)/2;++i) {
-    PGresult* result = 
-      PQprepare(PQconn,
-                queries[i].name,
-                queries[i].query,
-                0,
-                NULL);
-    PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
-  }
+  setNumQueued(getNumQueued());
 
-  for(;;) {
-    while(getNumQueued() < 0x20) {
-      queueHighestRated();
-      write(1,'>',1);
-    }
-    write(1,'>',1);
-    kill(getpid(),SIGSTOP);
-  }
+  pthread_t thread;
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(attr,PTHREAD_CREATE_DETACHED);
+
+  pthread_create(&thread,&attr,queueChecker);
 }
+

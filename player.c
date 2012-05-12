@@ -1,5 +1,8 @@
+#include "select.h"
 #include "urlcodec.h"
 #include "config.h"
+#include "pq.h"
+#include "preparation.h"
 
 #include <fcntl.h> // open O_RDONLY
 #include <unistd.h> // STDIN_FILENO
@@ -91,6 +94,7 @@ bus_call (GstBus     *bus,
     fclose(tagHack);
     tagHack = NULL;
     write(STDOUT_FILENO,".",1);
+    selectDone();
     break;
     
   case GST_MESSAGE_ERROR: {
@@ -213,28 +217,9 @@ gboolean on_activate(GstPad* pad, gboolean active) {
   return ret;
 }   
 
-struct chunkBuffer {
-  ssize_t position;
-  ssize_t len;
-  uint8_t buf[0x400];
-};
+/* Note: will restart the current song if called. */
 
-static void handleChunk(uint8_t* buf, uint16_t len) {
-  static uint8_t state = 0;
-  if(len==0) {
-    state = 0;
-    return;
-  }
-  gchar* end;
-  buf[len] = '\0';
-  switch(state) {
-    case 0:
-
-      break;
-  };
-}
-
-static void play(void) {
+void playerPlay(void) {
   uint32_t lastId = -1;
   PGresult* result = 
     PQexecPrepared(PQconn,"getTopRecording",
@@ -258,24 +243,42 @@ static void play(void) {
   uint16_t len = strlen(recording);
   int fmt = 0;
   
-  PGresult* result2 = 
-    PQexecPrepared(PQconn,"getTracksFor",
-                   1,((const char* const*)&recording),(const int*)&len,&fmt,0);
-  PQclear(result);
-  result = result2;
   rows = PQntuples(result);
   cols = PQnfields(result);
-  PQassert(result,rows>=1 && cols==5);
-  int i,j;
-  for(i=0;i<rows;++i) {
-    g_activate_gain.gain = g_ascii_strtod(PQgetvalue(result,0,0),&end);
-    g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,1),&end);
-    g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,2),&end);
-    nextSong(PQgetvalue(result,0,3));
-  }
- CLEAR:
+  PQassert(result,rows==1 && cols==5);
+  g_activate_gain.gain = g_ascii_strtod(PQgetvalue(result,0,1),&end);
+  g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,2),&end);
+  g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,3),&end);
+  nextSong(PQgetvalue(result,0,4));  
   PQclear(result);
-  kill(getpid(),SIGSTOP);
+}
+
+static gboolean on_input (GIOChannel *source,
+                   GIOCondition condition,
+                   gpointer data) {
+  gchar buf[0x100];
+  GError* error = NULL;
+  gsize amt;
+  for(;;) {
+    GIOStatus status =  g_io_channel_read_chars (source,
+                                                 buf,
+                                                 0x100,
+                                                 &amt,
+                                                 &error);
+    switch(status) {
+    case G_IO_STATUS_NORMAL:
+      continue;
+    case G_IO_STATUS_AGAIN:
+      break;
+    case G_IO_STATUS_EOF:
+      g_main_loop_quit (loop);
+      return;
+    case G_IO_STATUS_ERROR:
+      g_printerr(error->message);
+      exit(error->code);
+    };
+  }
+  selectNext();
 }
 
 void watchInput(void) {
@@ -288,6 +291,13 @@ main (int argc, char ** argv)
 {
   gst_init (NULL,NULL);
   configInit();
+  PQinit();
+
+  preparation_t queries = {
+    { "getTopRecording",
+      "SELECT recording FROM queue ORDER BY id LIMIT 1" }
+  };
+  prepareQueries(queries);
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
 
@@ -339,11 +349,11 @@ main (int argc, char ** argv)
     g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), alsa);
   }
 
-  if(argc==3) {
-    nextSong(argv[2]);
-  } else {
-    watchInput(loop);
-  }
+  watchInput(loop);  
+
+  selectSetup();
+
+  playerPlay();
 
   g_main_loop_run(loop);
   gst_element_set_state (pipeline, GST_STATE_NULL);

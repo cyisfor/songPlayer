@@ -41,28 +41,41 @@ struct schema_version versions[] = {
     {
       { FROMFILE, { .path = "base.sql" }},
       endCommands}},
-  { 2,
+  { 3,
     {
       { TEXT, {
           .sql = "CREATE TABLE newtracks (      \
-id SERIAL PRIMARY KEY,                          \
-recording bigint REFERENCES recordings(id),     \
-title text,                                     \
-which integer,                                  \
-startpos bigint,                                   \
-endpos bigint,                                    \
+id SERIAL PRIMARY KEY,                                        \
+recording bigint REFERENCES recordings(id) ON DELETE CASCADE, \
+title text,                                                   \
+which integer,                                                \
+startpos bigint,                                              \
+endpos bigint,                                                \
 UNIQUE(recording,startpos,endpos))"}},
       { TEXT, {
           .sql = "CREATE TABLE newfiles (       \
-id BIGSERIAL PRIMARY KEY,                       \
-recording bigint REFERENCES recordings(id),     \
+id BIGSERIAL PRIMARY KEY,                                     \
+recording bigint REFERENCES recordings(id) ON DELETE CASCADE, \
 path TEXT UNIQUE)"
         }},
+      { TEXT, {
+          .sql = "CREATE TABLE newreplaygain (       \
+id BIGINT PRIMARY KEY REFERENCES recordings(id) ON DELETE CASCADE, \
+gain double precision,                                             \
+peak double precision,                                             \
+level double precision)"
+        }},
       endCommands}},
-  { 3, 
+  { 4, 
     {
       { FROMFILE, {
           .path = "track2song.sql"
+        }},
+      endCommands}},
+  { 5, 
+    {
+      { FROMFILE, {
+          .path = "songplayed.sql"
         }},
       endCommands}}
 };

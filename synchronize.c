@@ -7,7 +7,12 @@ pthread_mutex_t queueLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t _checkQueue = PTHREAD_COND_INITIALIZER;
 pthread_cond_t _songInQueue = PTHREAD_COND_INITIALIZER;
 
-unsigned int queueSize = 0;
+uint8_t queueSize = 0;
+
+void setNumQueued(uint8_t num) {
+  // don't need a lock at this point...
+  queueSize = num;
+}
 
 void waitUntilSongInQueue(void) {
   pthread_mutex_lock(&queueLock);
@@ -27,16 +32,21 @@ void waitUntilQueueNeeded(void) {
   pthread_mutex_unlock(&queueLock);
 }
 
-void songInQueue(void) {
+void songOutOfQueue(void) {
   pthread_mutex_lock(&queueLock);
-  ++queueSize;
-  pthread_cond_broadcast(&_songInQueue);
+  if(queueSize>0)
+    --queueSize;
+  pthread_cond_broadcast(&_checkQueue);
   pthread_mutex_unlock(&queueLock);
 }
 
-void songOutOfQueue(void) {
-  pthread_mutex_lock(&queueLock);
-  assert(queueSize>0);
-  --queueSize;
-  pthread_mutex_unlock(&queueLock);
+void fillQueue(void (*addOne)(void)) {
+  for(;;) {
+    pthread_mutex_lock(&queueLock);
+    if(queueSize >= 0x10) break;
+    addOne();
+    ++queueSize;
+    pthread_cond_broadcast(&_songInQueue);
+    pthread_mutex_unlock(&queueLock);
+  }
 }
