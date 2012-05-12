@@ -1,6 +1,10 @@
+#include <stdlib.h>
+
 typedef struct {
   const char* name;
   const char* query;
 } preparation_t;
 
-void prepareQueries(preparation_t queries[]);
+#define prepareQueries(queries) prepareQueries_p(queries,sizeof(queries)/sizeof(preparation_t))
+
+void prepareQueries_p(preparation_t queries[],ssize_t num);

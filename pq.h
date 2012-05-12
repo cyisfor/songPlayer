@@ -1,6 +1,7 @@
 #include <libpq-fe.h>
 
-extern PGconn* PQconn;
+// need one connection per thread :/
+extern __thread PGconn* PQconn;
 
 void PQinit(void);
 
