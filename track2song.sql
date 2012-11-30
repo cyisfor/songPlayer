@@ -13,10 +13,10 @@ _newrecording bigint;
 _newtrack bigint;
 BEGIN
         SELECT title, files.path,recordings.played,recordings.recorded,
-                       recordings.artist,recordings.album INTO 
+                       recordings.artist,recordings.album INTO
                _title, _path, _played, _recorded, _artist, _album
-                 FROM tracks 
-                 INNER JOIN recordings ON recordings.id = tracks.recording 
+                 FROM tracks
+                 INNER JOIN recordings ON recordings.id = tracks.recording
                  INNER JOIN files ON files.track = tracks.id
                    WHERE track = _track;
         INSERT INTO things (description) VALUES ('song:' || _title) RETURNING id INTO _newsong;
@@ -32,8 +32,6 @@ BEGIN
         RETURN _newtrack;
 END;
 $$;
-DROP FUNCTION oldtrack2new(bigint);
-DROP FUNCTION oldtrack2new(bigint,bigint);
 CREATE OR REPLACE FUNCTION oldtrack2new(_track bigint, _newrecording bigint) RETURNS bigint
 LANGUAGE plpgsql
 AS $$
@@ -50,10 +48,10 @@ BEGIN
         SELECT title, files.path,recordings.played,recordings.recorded,
                        recordings.artist,recordings.album,
                        tracks.id INTO
-               _title, _path, _played, _recorded, _artist, _album, 
+               _title, _path, _played, _recorded, _artist, _album,
                _track
-                 FROM tracks 
-                 INNER JOIN recordings ON recordings.id = tracks.recording 
+                 FROM tracks
+                 INNER JOIN recordings ON recordings.id = tracks.recording
                  INNER JOIN files ON files.track = tracks.id
                    WHERE tracks.id = _track;
         BEGIN
