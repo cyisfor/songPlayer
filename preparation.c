@@ -1,8 +1,10 @@
 #include "preparation.h"
 #include "pq.h"
 
-void prepareQueries(preparation_t queries[]) {
-  for(i=0;i<sizeof(queries)/sizeof(preparation_t);++i) {
+void prepareQueries_p(preparation_t queries[],ssize_t num) {
+  int i;
+  for(i=0;i<num;++i) {
+    printf("Preparing query %s %p\n",queries[i].name,PQconn);
     PGresult* result = 
       PQprepare(PQconn,
                 queries[i].name,

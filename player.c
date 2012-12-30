@@ -3,6 +3,10 @@
 #include "config.h"
 #include "pq.h"
 #include "preparation.h"
+#include "synchronize.h"
+#include "queue.h"
+
+#include <signal.h>
 
 #include <fcntl.h> // open O_RDONLY
 #include <unistd.h> // STDIN_FILENO
@@ -15,8 +19,8 @@
 
 #include <assert.h>
 
-static gchar* strescape(const gchar* unformatted, 
-			const gchar* targets, 
+static gchar* strescape(const gchar* unformatted,
+			const gchar* targets,
 			const gchar* substs) {
   ssize_t uflen = strlen(unformatted);
   ssize_t tlen = strlen(targets);
@@ -33,10 +37,10 @@ static gchar* strescape(const gchar* unformatted,
 	break;
       }
     }
-    if(found==FALSE) 
+    if(found==FALSE)
       g_string_append_c(results,unformatted[i]);
   }
-  
+
   return g_string_free(results,FALSE);
 }
 
@@ -96,21 +100,21 @@ bus_call (GstBus     *bus,
     write(STDOUT_FILENO,".",1);
     selectDone();
     break;
-    
+
   case GST_MESSAGE_ERROR: {
     gchar  *debug;
     GError *error;
-    
+
     gst_message_parse_error (msg, &error, &debug);
     g_free (debug);
-    
+
     g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
-    
+
     g_main_loop_quit (loop);
     break;
   }
-    
+
   case GST_MESSAGE_TAG: {
     GstTagList *tags = NULL;
     if(tagHack==NULL) {
@@ -120,9 +124,10 @@ bus_call (GstBus     *bus,
     gst_message_parse_tag (msg, &tags);
     gst_tag_list_foreach(tags,print_one_tag,NULL);
     gst_tag_list_free(tags);
+    fflush(tagHack);
     break;
   }
-    
+
   default:
     break;
   };
@@ -160,7 +165,7 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement * sinkElement)
       g_object_unref(parentA);
       g_object_unref(parentB);
       exit(3);
-    }				    
+    }
   }
   gst_object_unref (sinkpad);
 }
@@ -170,6 +175,7 @@ GstElement* pipeline = NULL;
 GstBus* bus = NULL;
 
 static int nextSong(const char* next) {
+  fprintf(stderr,"PATH: %s",next);
   gst_element_set_state (pipeline, GST_STATE_NULL);
   struct stat buf;
   if(stat(next,&buf)!=0) {
@@ -192,13 +198,13 @@ struct {
                      gboolean active);
 } g_activate_gain = { 0, 0, 0, NULL };
 
-gboolean on_activate(GstPad* pad, gboolean active) {
+static gboolean on_activate(GstPad* pad, gboolean active) {
   gboolean ret = FALSE;
   if(g_activate_gain.super)
     ret = g_activate_gain.super(pad,active);
 
   if(active==FALSE) return ret;
-  
+
   GstTagList* list = gst_tag_list_new();
   GValue value;
   memset(&value,0,sizeof(value));
@@ -215,24 +221,37 @@ gboolean on_activate(GstPad* pad, gboolean active) {
   gst_tag_list_add_value(list,  GST_TAG_MERGE_REPLACE, GST_TAG_REFERENCE_LEVEL, &value);
   assert(TRUE==gst_pad_send_event(pad,gst_event_new_tag(list)));
   return ret;
-}   
+}
 
 /* Note: will restart the current song if called. */
 
 void playerPlay(void) {
   uint32_t lastId = -1;
-  PGresult* result = 
-    PQexecPrepared(PQconn,"getTopRecording",
-                   0,NULL,NULL,NULL,0);
-  int rows = PQntuples(result);
+  PGresult* result = NULL;
+  int rows = 0;
+
+  gst_element_set_state (pipeline, GST_STATE_NULL);
+
+  for(;;) {
+      waitUntilSongInQueue();
+      result =
+          PQexecPrepared(PQconn,"getTopRecording",
+                         0,NULL,NULL,NULL,0);
+      rows = PQntuples(result);
+      if(rows>0) break;
+      PQclear(result);
+      sleep(1);
+  }
+
   int cols = PQnfields(result);
   fprintf(stderr,"rows %x cols %x\n",rows,cols);
-  PQassert(result,rows>=1 && cols==1);
+  PQassert(result,rows>=1 && cols==5);
   char* end;
 
   char* recording = PQgetvalue(result,0,0);
   uint32_t id = strtol(recording,&end,10);
   fprintf(stderr,"ID %x %x\n",id,lastId);
+
   if (id==lastId) {
     fprintf(stderr,"(error repeated-song #x%x)\n",id);
     goto CLEAR;
@@ -242,14 +261,15 @@ void playerPlay(void) {
 
   uint16_t len = strlen(recording);
   int fmt = 0;
-  
+
   rows = PQntuples(result);
   cols = PQnfields(result);
   PQassert(result,rows==1 && cols==5);
   g_activate_gain.gain = g_ascii_strtod(PQgetvalue(result,0,1),&end);
   g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,2),&end);
   g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,3),&end);
-  nextSong(PQgetvalue(result,0,4));  
+  nextSong(PQgetvalue(result,0,4));
+ CLEAR:
   PQclear(result);
 }
 
@@ -259,45 +279,88 @@ static gboolean on_input (GIOChannel *source,
   gchar buf[0x100];
   GError* error = NULL;
   gsize amt;
+  uint8_t ready = 0;
   for(;;) {
     GIOStatus status =  g_io_channel_read_chars (source,
                                                  buf,
                                                  0x100,
                                                  &amt,
                                                  &error);
+    if(amt < 0x100) break;
     switch(status) {
     case G_IO_STATUS_NORMAL:
       continue;
     case G_IO_STATUS_AGAIN:
+      ready = 1;
       break;
     case G_IO_STATUS_EOF:
-      g_main_loop_quit (loop);
-      return;
+      {
+        GMainLoop* loop = (GMainLoop*) data;
+        g_main_loop_quit (loop);
+        return;
+      }
     case G_IO_STATUS_ERROR:
-      g_printerr(error->message);
+      g_printerr("%s",error->message);
       exit(error->code);
     };
+    if(ready) break;
   }
   selectNext();
+  return TRUE;
 }
 
-void watchInput(void) {
+static void watchInput(GMainLoop* loop) {
   GIOChannel* in = g_io_channel_unix_new(STDIN_FILENO);
+  GError* error = NULL;
+  g_io_channel_set_flags(in,G_IO_FLAG_NONBLOCK,&error);
+  if(error) {
+    g_error("Can't nonblock %s",error->message);
+    exit(23);
+  }
   g_io_add_watch(in,G_IO_IN,(void*)on_input,loop);
 }
 
-int
-main (int argc, char ** argv)
+static void signalNext(int signal) {
+  // this should execute in the main GTK thread (see signals.c)
+  queueInterrupted = 1;
+  selectNext();
+}
+
+static void restartPlayer(int signal) {
+  // this should execute in the main GTK thread (see signals.c)
+    queueInterrupted = 1;
+    playerPlay();
+}
+
+int main (int argc, char ** argv)
 {
+  signalsSetup();
   gst_init (NULL,NULL);
   configInit();
-  PQinit();
+  selectSetup();
+  onSignal(SIGUSR1,signalNext);
+  onSignal(SIGUSR2,restartPlayer);
 
-  preparation_t queries = {
+  preparation_t queries[] = {
     { "getTopRecording",
-      "SELECT recording FROM queue ORDER BY id LIMIT 1" }
+      "SELECT queue.recording,"
+      "replaygain.gain,replaygain.peak,replaygain.level,"
+      "recordings.path "
+      "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1" },
+    { "setPID",
+      "SELECT setPID(0,$1)"}
   };
   prepareQueries(queries);
+
+  {
+    char buf[8];
+    const char* values[1] = { buf };
+    int lengths[1];
+    const int fmt[1] = { 0 };
+    lengths[0] = snprintf(buf,8,"%d",getpid());
+    PQexecPrepared(PQconn,"setPID",
+                   1,values,lengths,fmt,0);
+  }
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
 
@@ -314,12 +377,12 @@ main (int argc, char ** argv)
     adjuster = gst_element_factory_make("rgvolume", NULL);
     GstPad* rgsource = gst_element_get_static_pad (adjuster, "sink");
     assert(rgsource != NULL);
-    // XXX: meh! this also needs to only on_activate when the 
+    // XXX: meh! this also needs to only on_activate when the
     // FLUSH_STOP event comes around. Have to wrap the event
     // handler too?
     g_activate_gain.super = rgsource->activatepushfunc;
     gst_pad_set_activatepush_function(rgsource,on_activate);
-    if(!(adjuster && converter)) 
+    if(!(adjuster && converter))
       g_error("Adjuster could not be created");
     g_object_set (adjuster, "album-mode", FALSE, NULL);
     g_object_set (adjuster, "pre-amp", 6.0, NULL);
@@ -328,15 +391,15 @@ main (int argc, char ** argv)
 
   GstElement* alsa = gst_element_factory_make("alsasink", NULL);
 
-  if(!(src && decoder && alsa)) 
+  if(!(src && decoder && alsa))
   	g_error("One element could not be created...");
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
   gst_bus_add_watch (bus, bus_call, loop);
 
   if(adjuster)
-    gst_bin_add_many (GST_BIN (pipeline), src, decoder, 
-		      converter, adjuster, 
+    gst_bin_add_many (GST_BIN (pipeline), src, decoder,
+		      converter, adjuster,
 		      alsa, NULL);
   else
     gst_bin_add_many (GST_BIN (pipeline), src, decoder, alsa, NULL);
@@ -349,9 +412,7 @@ main (int argc, char ** argv)
     g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), alsa);
   }
 
-  watchInput(loop);  
-
-  selectSetup();
+  //watchInput(loop);
 
   playerPlay();
 

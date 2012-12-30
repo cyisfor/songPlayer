@@ -41,50 +41,17 @@ struct schema_version versions[] = {
     {
       { FROMFILE, { .path = "base.sql" }},
       endCommands}},
-  { 3,
+  { 2,
     {
-      { TEXT, {
-          .sql = "CREATE TABLE newtracks (      \
-id SERIAL PRIMARY KEY,                                        \
-recording bigint REFERENCES recordings(id) ON DELETE CASCADE, \
-title text,                                                   \
-which integer,                                                \
-startpos bigint,                                              \
-endpos bigint,                                                \
-UNIQUE(recording,startpos,endpos))"}},
-      { TEXT, {
-          .sql = "CREATE TABLE newfiles (       \
-id BIGSERIAL PRIMARY KEY,                                     \
-recording bigint REFERENCES recordings(id) ON DELETE CASCADE, \
-path TEXT UNIQUE)"
-        }},
-      { TEXT, {
-          .sql = "CREATE TABLE newreplaygain (       \
-id BIGINT PRIMARY KEY REFERENCES recordings(id) ON DELETE CASCADE, \
-gain double precision,                                             \
-peak double precision,                                             \
-level double precision)"
-        }},
+      { FROMFILE, { .path = "selins.sql" }},
       endCommands}},
-  { 4, 
-    {
-      { FROMFILE, {
-          .path = "track2song.sql"
-        }},
-      endCommands}},
-  { 5, 
-    {
-      { FROMFILE, {
-          .path = "songplayed.sql"
-        }},
-      endCommands}}
 };
 
 static int runCommand(struct command* command) {
   puts("Running command");
   switch(command->type) {
   case FROMFILE:
-    { 
+    {
       const char* path = command->data.path;
       printf("file: %s\n",path);
       FILE* fp = fopen(path,"rt");
@@ -109,12 +76,12 @@ static int runCommand(struct command* command) {
   case CODE:
     puts("code");
     return command->data.generator();
-  } 
-} 
+  }
+}
 
 int main(void) {
   PQinit();
-  Checkclear(PQexecParams(PQconn, "CREATE TABLE versions (version BIGINT)",
+  PQclear(PQexecParams(PQconn, "CREATE TABLE versions (version BIGINT)",
                        0,NULL,NULL,NULL,NULL,0));
   PGresult* result = PQexecParams(PQconn,"SELECT version FROM versions",
                                    0,NULL,NULL,NULL,NULL,0);
@@ -122,7 +89,7 @@ int main(void) {
   if(PQntuples(result)>0) {
     oldVersion = strtoll(PQgetvalue(result,0,0),NULL,10);
   }
-  
+
   int i;
   for(i=0;i<sizeof(versions)/sizeof(struct schema_version);++i) {
     struct schema_version* version = versions + i;
@@ -145,11 +112,8 @@ int main(void) {
                            1,NULL,values,&len,&fmt,0));
       Checkclear(PQexecParams(PQconn, "COMMIT",
                            0,NULL,NULL,NULL,NULL,0));
-    SKIP:     
+    SKIP:
       0;
     }
   }
 }
-  
-    
-    

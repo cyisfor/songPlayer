@@ -2,6 +2,10 @@
 #include "synchronize.h"
 #include "preparation.h"
 #include "config.h"
+#include "adjust.h"
+
+#include <pthread.h>
+#include <glib.h>
 
 #include <math.h>
 #include <stdint.h>
@@ -10,151 +14,212 @@
 
 #include <assert.h>
 
-int randomSource = 0;
+void* myPQtest = NULL;
 
-#define AVAILABLE 0
-#define NEED 1
+/* Choose according to the number of songs, not the score range.
+   If you chose by the mean (least to greatest score) then when you rate
+   a song down least, it will decrease the frequency that songs you like are
+   played. So like -1,2,2,2,2,10,10 the top 2 will play a lot more than with
+   -1000,2,2,2,2,10,10 in which case the top 6 will get about equal treatment.
 
-double A;
-double eA;
-
-static void setupOffsetCurve(double halfwayPoint) {
-  A = log(0.5) / (halfwayPoint - 1);
-  eA = exp(A);
-}
-
-#define RESTRICT 0.9
-
-static double offsetCurve(double x) {
-  return (1 - exp(A * x) / eA) * RESTRICT;
-}
+   If you chose by the median (number of songs) then when you rate a song down
+   it won't affect the frequency songs you like more being played.
+*/
 
 static PGresult* pickBestRecording(void) {
   int rows,cols;
   char* end = NULL;
-  PGresult* result = 
+  PGresult* result, *result2;
+  uint64_t num;
+  uint32_t randVal;
+  double pivotF;
+  int32_t pivot;
+  char buf[0x100];
+  int length;
+  const int fmt = 0;
+  char* song;
+ TRYAGAIN:
+  result =
     PQexecPrepared(PQconn,"bestSongRange",
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
-  PQassert(result,rows==1 && cols==2);
-  int maxScore = strtol(PQgetvalue(result,0,1),&end,10);
-  int minScore = strtol(PQgetvalue(result,0,0),&end,10);
-
+  PQassert(result,rows==1 && cols==1);
+  num = strtol(PQgetvalue(result,0,0),&end,10);
   PQclear(result);
 
-  uint32_t randVal;
-  read(randomSource,&randVal,sizeof(randVal));
+  double randF = drand48();
+  assert(randF >= 0 && randF <= 1);
 
-  int pivot = minScore + (maxScore - minScore) * 
-    offsetCurve(((double)randVal) / (1L<<(sizeof(randVal)<<3)));
+  pivotF = offsetCurve(1.0-randF);
+  pivot = num * pivotF;
 
-  char buf[0x100];
-  int length = snprintf(buf,0x100,"%d",pivot);
-  const int fmt = 0;
+  int tries = 0;
+  for(;;) {
+    length = snprintf(buf,0x100,"%d",pivot);
 
-  result = 
-    PQexecPrepared(PQconn,"bestSong",
-                   1,(const char* const*)(&buf),&length,&fmt,0);
-  rows = PQntuples(result);
+    g_message("rand goes %lf to %lf",randF,pivotF);
+    g_message("pivot offset is between 0:%lu is %d",num,pivot);
+
+    { const char* values[] = { buf };
+      result =
+        PQexecPrepared(PQconn,"bestSong",
+                     1,values,&length,&fmt,0);
+    }
+    rows = PQntuples(result);
+    break;
+  }
   cols = PQnfields(result);
-  PQassert(result,rows>=1 && cols==1);
+  PQassert(result,rows>=1 && cols==2);
 
   // note: this is a serialized integer, not a title or path.
-  char* song = PQgetvalue(result,0,0);
+  song = PQgetvalue(result,0,0);
+
+  g_message("Best song: %s %s",song,PQgetvalue(result,0,1));
 
   length = strlen(song);
 
-  PGresult* result2 = 
-    PQexecPrepared(PQconn,"bestRecordingRange",
-                   1,(const char* const*)(&song),&length,&fmt,0);
-  PQassert(result2,rows==1 && cols==2);
-  maxScore = strtol(PQgetvalue(result,0,1),&end,10);
-  maxScore = strtol(PQgetvalue(result,0,0),&end,10);
-
-  PQclear(result2);
-
-  read(randomSource,&randVal,sizeof(randVal));
-
-  pivot = minScore + (maxScore - minScore) * 
-    offsetCurve(((double)randVal) / (1L<<(sizeof(randVal)<<3)));
-  
-  const char* parameters[2] = { song, buf };
-  int lengths[2] = { length, snprintf(buf,0x100,"%d",pivot) };
-  int formats[2] = { 0, 0 };
-
-  result2 = 
-    PQexecPrepared(PQconn,"bestRecording",
-                   2,parameters,lengths,formats,0);
-
-  PQclear(result);
+  { const char* values[] = { song };
+    result2 =
+      PQexecPrepared(PQconn,"bestRecordingRange",
+                     1,values,&length,&fmt,0);
+  }
   rows = PQntuples(result2);
   cols = PQnfields(result2);
   PQassert(result2,rows==1 && cols==1);
+  num = strtol(PQgetvalue(result2,0,0),&end,10);
+  PQclear(result2);
+
+  randF = drand48();
+
+  pivotF = offsetCurve(randF);
+  pivot = num * pivotF;
+
+  {
+    const char* parameters[2] = { song, buf };
+    int lengths[2] = { length, snprintf(buf,0x100,"%d",pivot) };
+    const int formats[2] = { 0, 0 };
+
+    result2 =
+      PQexecPrepared(PQconn,"bestRecording",
+                     2,parameters,lengths,formats,0);
+  }
+
+  rows = PQntuples(result2);
+  if(rows==0) {
+      g_error("Song %s has no recordings!\n",song);
+  }
+  cols = PQnfields(result2);
+  PQclear(result);
+
+  if(!(rows==1 && cols == 1))
+    g_error("rows %d cols %d\n",rows,cols);
 
   return result2;
 }
 
-static void queueHighestRated(void) {
-  PGresult* result = pickBestRecording();
+static uint8_t getNumQueued(void);
 
-  char* recording = PQgetvalue(result,0,0);
-  int len = strlen(recording);
-  int fmt = 0;
-  PGresult* result2 = 
+volatile uint8_t queueInterrupted = 0;
+
+static uint8_t queueHighestRated(void) {
+    PQcheckClear(PQexecPrepared(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
+    PQcheckClear(PQexecPrepared(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
+    PQcheckClear(PQexecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
+
+TRYAGAIN:
+  queueInterrupted = 0;
+  PGresult* result = pickBestRecording();
+  if(queueInterrupted) {
+      PQclear(result);
+      goto TRYAGAIN;
+  }
+
+  int rows = PQntuples(result);
+  int cols = PQnfields(result);
+  PQassert(result,rows==1 && cols==1);
+
+  g_message("Inserting %s",PQgetvalue(result,0,0));
+  const char* parameters[] = { PQgetvalue(result,0,0) };
+  int len[] =  { strlen(parameters[0]) };
+  const int fmt[] = { 0 };
+  PGresult* result2 =
     PQexecPrepared(PQconn,"insertIntoQueue",
-                   1,(const char* const*)(&recording),&len,&fmt,0); 
+                   1,parameters,len,fmt,0);
   PQclear(result);
   PQassert(result2,(long int)result2);
   PQclear(result2);
+  PQclear(PQexecParams(PQconn,"COMMIT",0,NULL,NULL,NULL,NULL,0));
+  return getNumQueued();
 }
 
 static uint8_t getNumQueued(void) {
-  PGresult* result = 
+  PGresult* result =
     PQexecPrepared(PQconn,"numQueued",
                    0,NULL,NULL,NULL,0);
   int rows = PQntuples(result);
   int cols = PQnfields(result);
-  PQassert(result,rows>=1 && cols==1);  
+  PQassert(result,rows>=1 && cols==1);
   char* end;
   uint8_t numQueued = strtol(PQgetvalue(result,0,0),&end,10);
+  g_message("Num queued is now %d",numQueued);
   PQclear(result);
   return numQueued;
 }
 
 static void* queueChecker(void* arg) {
+    int truerand = open("/dev/random",O_RDONLY);
+    unsigned short seed16v[3];
+    assert(sizeof(seed16v)==sizeof(short)*3);
+    read(truerand,seed16v,sizeof(seed16v));
+    close(truerand);
+    seed48(seed16v);
+    memset(seed16v,0,sizeof(seed16v));
+
+
+  assert(myPQtest==NULL);
+  PQinit();
+  g_message("PQ Queue conn %p",PQconn);
+  myPQtest = PQconn;
+  preparation_t queries[] = {
+    { "scoreByLast",
+      "SELECT timeConnectionThingy(1)" },
+    { "rateByPlayer",
+      "SELECT rate(0,100)" },
+    { "resetRatings",
+      "DELETE FROM ratings"},
+    { "numQueued",
+      "SELECT COUNT(id) FROM queue" },
+    { "bestSongRange",
+      "SELECT COUNT(songs.id) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue))" },
+    { "bestSong",
+      "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) ORDER BY score,random() DESC OFFSET $1 LIMIT 1" },
+    { "bestRecordingRange",
+      "SELECT COUNT(recordings.id) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
+    { "bestRecording",
+      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC OFFSET $2 LIMIT 1" },
+    { "aRecording",
+      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC LIMIT 1" },
+    { "insertIntoQueue",
+      "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"}
+  };
+
+  prepareQueries(queries);
+  setNumQueued(getNumQueued());
+
+  setupOffsetCurve(0.9);
+
   for(;;) {
     fillQueue(queueHighestRated);
-    waitUntilQueueNeeded();
+    waitUntilQueueNeeded(getNumQueued);
   }
 }
 
 void queueSetup(void) {
-  randomSource = open("/dev/urandom",O_RDONLY);
-  preparation_t queries[] = {
-    { "numQueued",
-      "SELECT COUNT(id) FROM queue" },
-    { "bestSongRange",
-      "SELECT coalesce(MAX(ratings.score),-1500),coalesce(MIN(ratings.score),-1500) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id" },
-    { "bestSong",
-      "SELECT songs.id FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE score >= $1 ORDER BY score LIMIT 1" },
-    { "bestRecordingRange",
-      "SELECT coalesce(MAX(ratings.score),-1500),coalesce(MIN(ratings.score),-1500) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
-    { "bestRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 AND score >= $2 ORDER BY score LIMIT 1" },
-    { "insertIntoQueue",
-      "INSERT INTO queue (recording) VALUES ($1)"}
-  };
-
-  prepareQueries(queries);
-
-  setNumQueued(getNumQueued());
-
   pthread_t thread;
   pthread_attr_t attr;
   pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(attr,PTHREAD_CREATE_DETACHED);
+  pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
-  pthread_create(&thread,&attr,queueChecker);
+  pthread_create(&thread,&attr,queueChecker,NULL);
 }
-

@@ -9,14 +9,14 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
+-- Name: plpgsql; Type: EXTENSION; Schema: -; Owner:
 --
 
 CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
+-- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner:
 --
 
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
@@ -58,39 +58,6 @@ ALTER TYPE public.ratingboo OWNER TO ion;
 -- Name: connectionstrength(bigint, bigint, double precision, boolean); Type: FUNCTION; Schema: public; Owner: ion
 --
 
-CREATE FUNCTION connectionstrength(_red bigint, _blue bigint, _strength double precision, _incrementally boolean DEFAULT true) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-       _plur double precision;
-BEGIN
-	IF _incrementally THEN
-	   SELECT (strength + _strength) INTO _plur FROM connections WHERE red = _red AND blue = _blue;
-	   IF _plur IS NOT NULL THEN
-	      _strength = _plur;
-	   END IF;
-	END IF;
-	   
-	IF abs(_strength) < 0.0000001 THEN
-	  DELETE FROM connections WHERE red = _red AND blue = _blue;
-	  RETURN;
-	END IF;
-
-	UPDATE connections SET strength = _strength WHERE red = _red AND blue = _blue;
-
-	IF FOUND THEN 
-	   RETURN; 
-	END IF;
-
-	BEGIN
-		INSERT INTO connections (red,blue,strength) VALUES (_red,_blue,_strength);
-	EXCEPTION
-		WHEN unique_violation THEN
-		     -- something else inserted a strength... just use theirs
-		     RETURN;
-	END;
-END;
-$$;
 
 
 ALTER FUNCTION public.connectionstrength(_red bigint, _blue bigint, _strength double precision, _incrementally boolean) OWNER TO ion;
@@ -150,6 +117,137 @@ $$;
 ALTER FUNCTION public.ratefeep(_rating bigint, _adjust double precision, _depth integer) OWNER TO ion;
 
 --
+-- Name: selinsthingalbums(text); Type: FUNCTION; Schema: public; Owner: ion
+--
+
+CREATE FUNCTION selinsthingalbums(_title text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+_id integer;
+BEGIN
+    LOOP
+        -- first try to find it
+        SELECT id INTO _id FROM albums WHERE title = _title;
+        -- check if the row is found
+        IF FOUND THEN
+            RETURN _id;
+        END IF;
+        BEGIN
+            INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
+            INSERT INTO albums (id, title) VALUES (_id, _title) RETURNING id INTO _id;
+            RETURN _id;
+            EXCEPTION WHEN unique_violation THEN
+                -- do nothing and loop
+        END;
+    END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION public.selinsthingalbums(_title text) OWNER TO ion;
+
+--
+-- Name: selinsthingartists(text); Type: FUNCTION; Schema: public; Owner: ion
+--
+
+CREATE FUNCTION selinsthingartists(_name text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+_id integer;
+BEGIN
+    LOOP
+        -- first try to find it
+        SELECT id INTO _id FROM artists WHERE name = _name;
+        -- check if the row is found
+        IF FOUND THEN
+            RETURN _id;
+        END IF;
+        BEGIN
+            INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
+            INSERT INTO artists (id, name) VALUES (_id, _name) RETURNING id INTO _id;
+            RETURN _id;
+            EXCEPTION WHEN unique_violation THEN
+                -- do nothing and loop
+        END;
+    END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION public.selinsthingartists(_name text) OWNER TO ion;
+
+--
+-- Name: selinsthingsongs(text); Type: FUNCTION; Schema: public; Owner: ion
+--
+
+CREATE FUNCTION selinsthingsongs(_title text) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+_id integer;
+BEGIN
+    LOOP
+        -- first try to find it
+        SELECT id INTO _id FROM songs WHERE title = _title;
+        -- check if the row is found
+        IF FOUND THEN
+            RETURN _id;
+        END IF;
+        BEGIN
+            INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
+            INSERT INTO songs (id, title) VALUES (_id, _title) RETURNING id INTO _id;
+            RETURN _id;
+            EXCEPTION WHEN unique_violation THEN
+                -- do nothing and loop
+        END;
+    END LOOP;
+END;
+$$;
+
+
+ALTER FUNCTION public.selinsthingsongs(_title text) OWNER TO ion;
+
+--
+-- Name: setpid(integer, integer); Type: FUNCTION; Schema: public; Owner: ion
+--
+
+CREATE FUNCTION setpid(_who integer, _pid integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+   INSERT INTO pids (id,pid) VALUES (_who,_pid);
+EXCEPTION
+   WHEN unique_violation THEN
+        UPDATE pids SET pid = _pid WHERE id = _who;
+END;
+$$;
+
+
+ALTER FUNCTION public.setpid(_who integer, _pid integer) OWNER TO ion;
+
+--
+-- Name: songwasplayed(bigint); Type: FUNCTION; Schema: public; Owner: ion
+--
+
+CREATE FUNCTION songwasplayed(_recording bigint) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+_now timestamptz;
+BEGIN
+        _now = now();
+
+        UPDATE recordings SET played = _now, plays = plays + 1 WHERE id = _recording;
+        UPDATE songs SET played = _now, plays = plays + 1 WHERE id = (SELECT song FROM recordings WHERE id = _recording);
+END;
+$$;
+
+
+ALTER FUNCTION public.songwasplayed(_recording bigint) OWNER TO ion;
+
+--
 -- Name: tag(bigint, name[], double precision); Type: FUNCTION; Schema: public; Owner: ion
 --
 
@@ -166,11 +264,11 @@ BEGIN
 	  SELECT id INTO _red FROM things WHERE description = _tags[_name];
 	  IF NOT FOUND THEN
 	    BEGIN
-		INSERT INTO things (name) VALUES (_tags[_i]) 
+		INSERT INTO things (name) VALUES (_tags[_i])
 		       RETURNING id INTO _red;
             EXCEPTION
 		WHEN unique_violation THEN
-		     SELECT id INTO _red FROM things WHERE description = _tags[_name];		   
+		     SELECT id INTO _red FROM things WHERE description = _tags[_name];
 	    END;
 	  END IF;
 	  UPDATE connections SET strength = _strength WHERE red = _red AND blue = _blue;
@@ -183,7 +281,7 @@ BEGIN
 	     END;
 	  END IF;
 	END LOOP;
-END; 
+END;
 $$;
 
 
@@ -193,48 +291,6 @@ ALTER FUNCTION public.tag(_blue bigint, _tags name[], strength double precision)
 -- Name: timeconnectionthingy(bigint); Type: FUNCTION; Schema: public; Owner: ion
 --
 
-CREATE FUNCTION timeconnectionthingy(_timethingy bigint) RETURNS SETOF connectiontimesboo
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-_strength double precision;
-_song bigint;
-_played timestamptz;
-_diff interval;
-_boo connectiontimesboo;
-_maxplayed timestamptz;
-_maxdiff interval;
-BEGIN
-	FOR _song,_played in SELECT id,played FROM songs LOOP
-	    SELECT max(played) INTO _maxplayed FROM songs;
-	    IF (_played IS NULL) THEN
-	       _diff = interval '100 years';
-	       _strength := 2;
-	    ELSE
-		_diff := _maxplayed - _played;
-		_maxdiff := _maxplayed-(select min(played) from songs);
-	    	IF _maxdiff = interval '0' THEN
-	    		_strength := 0;
-	    	ELSE
-			_strength :=
-	       	    	  extract(epoch from _diff)
-	       		  * 2
-	       		  /
-       	       		  extract(epoch from _maxdiff) - 1;
-	    	END IF;
-	    END IF;
-	    _boo.song := _song;
-	    _boo.played := _played;
-	    _boo.diff := _diff;
-	    _boo.strength := _strength;
-	    RETURN NEXT _boo;
-	    -- type 3 row 4 is "How much time has passed sorta" concept
-	    -- type 0 is songs
-	    PERFORM connectionStrength(_timethingy,_song,_strength,false);
- 	END LOOP;
-END;
-$$;
-
 
 ALTER FUNCTION public.timeconnectionthingy(_timethingy bigint) OWNER TO ion;
 
@@ -243,7 +299,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: albums; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: albums; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE albums (
@@ -256,7 +312,7 @@ CREATE TABLE albums (
 ALTER TABLE public.albums OWNER TO ion;
 
 --
--- Name: artists; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: artists; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE artists (
@@ -268,7 +324,7 @@ CREATE TABLE artists (
 ALTER TABLE public.artists OWNER TO ion;
 
 --
--- Name: connections; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: connections; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE connections (
@@ -303,7 +359,14 @@ ALTER SEQUENCE connections_id_seq OWNED BY connections.id;
 
 
 --
--- Name: duration; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: connections_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
+--
+
+SELECT pg_catalog.setval('connections_id_seq', 290, true);
+
+
+--
+-- Name: duration; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE duration (
@@ -315,41 +378,7 @@ CREATE TABLE duration (
 ALTER TABLE public.duration OWNER TO ion;
 
 --
--- Name: files; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
---
-
-CREATE TABLE files (
-    id integer NOT NULL,
-    track integer,
-    path text
-);
-
-
-ALTER TABLE public.files OWNER TO ion;
-
---
--- Name: files_id_seq; Type: SEQUENCE; Schema: public; Owner: ion
---
-
-CREATE SEQUENCE files_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.files_id_seq OWNER TO ion;
-
---
--- Name: files_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: ion
---
-
-ALTER SEQUENCE files_id_seq OWNED BY files.id;
-
-
---
--- Name: history; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: history; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE history (
@@ -383,12 +412,30 @@ ALTER SEQUENCE history_id_seq OWNED BY history.id;
 
 
 --
--- Name: playing; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
+--
+
+SELECT pg_catalog.setval('history_id_seq', 1, false);
+
+
+--
+-- Name: pids; Type: TABLE; Schema: public; Owner: ion; Tablespace:
+--
+
+CREATE TABLE pids (
+    id integer NOT NULL,
+    pid integer
+);
+
+
+ALTER TABLE public.pids OWNER TO ion;
+
+--
+-- Name: playing; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE playing (
     id bigint NOT NULL,
-    which integer,
     song bigint NOT NULL
 );
 
@@ -396,7 +443,7 @@ CREATE TABLE playing (
 ALTER TABLE public.playing OWNER TO ion;
 
 --
--- Name: queue; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: queue; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE queue (
@@ -429,7 +476,14 @@ ALTER SEQUENCE queue_id_seq OWNED BY queue.id;
 
 
 --
--- Name: ratings; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: queue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
+--
+
+SELECT pg_catalog.setval('queue_id_seq', 1, false);
+
+
+--
+-- Name: ratings; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE ratings (
@@ -441,7 +495,7 @@ CREATE TABLE ratings (
 ALTER TABLE public.ratings OWNER TO ion;
 
 --
--- Name: recordings; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: recordings; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE recordings (
@@ -451,28 +505,30 @@ CREATE TABLE recordings (
     song bigint,
     recorded timestamp with time zone,
     plays integer DEFAULT 0,
-    played timestamp with time zone
+    played timestamp with time zone,
+    hash text,
+    path text
 );
 
 
 ALTER TABLE public.recordings OWNER TO ion;
 
 --
--- Name: replaygain; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: replaygain; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE replaygain (
-    id integer NOT NULL,
     gain double precision,
     peak double precision,
-    level double precision
+    level double precision,
+    id bigint NOT NULL
 );
 
 
 ALTER TABLE public.replaygain OWNER TO ion;
 
 --
--- Name: songs; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: songs; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE songs (
@@ -486,7 +542,7 @@ CREATE TABLE songs (
 ALTER TABLE public.songs OWNER TO ion;
 
 --
--- Name: things; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: things; Type: TABLE; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE TABLE things (
@@ -519,64 +575,17 @@ ALTER SEQUENCE things_id_seq OWNED BY things.id;
 
 
 --
--- Name: tracks; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
+-- Name: things_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
 --
 
-CREATE TABLE tracks (
-    id integer NOT NULL,
-    recording bigint NOT NULL,
-    hash text,
-    title text,
-    which integer
-);
+SELECT pg_catalog.setval('things_id_seq', 660, true);
 
-
-ALTER TABLE public.tracks OWNER TO ion;
-
---
--- Name: tracks_id_seq; Type: SEQUENCE; Schema: public; Owner: ion
---
-
-CREATE SEQUENCE tracks_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER TABLE public.tracks_id_seq OWNER TO ion;
-
---
--- Name: tracks_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: ion
---
-
-ALTER SEQUENCE tracks_id_seq OWNED BY tracks.id;
-
-
---
--- Name: version; Type: TABLE; Schema: public; Owner: ion; Tablespace: 
---
-
-CREATE TABLE version (
-    updated timestamp with time zone NOT NULL
-);
-
-
-ALTER TABLE public.version OWNER TO ion;
 
 --
 -- Name: id; Type: DEFAULT; Schema: public; Owner: ion
 --
 
 ALTER TABLE ONLY connections ALTER COLUMN id SET DEFAULT nextval('connections_id_seq'::regclass);
-
-
---
--- Name: id; Type: DEFAULT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY files ALTER COLUMN id SET DEFAULT nextval('files_id_seq'::regclass);
 
 
 --
@@ -601,14 +610,7 @@ ALTER TABLE ONLY things ALTER COLUMN id SET DEFAULT nextval('things_id_seq'::reg
 
 
 --
--- Name: id; Type: DEFAULT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY tracks ALTER COLUMN id SET DEFAULT nextval('tracks_id_seq'::regclass);
-
-
---
--- Name: albums_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: albums_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY albums
@@ -616,7 +618,7 @@ ALTER TABLE ONLY albums
 
 
 --
--- Name: albums_title_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: albums_title_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY albums
@@ -624,7 +626,7 @@ ALTER TABLE ONLY albums
 
 
 --
--- Name: artists_name_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: artists_name_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY artists
@@ -632,7 +634,7 @@ ALTER TABLE ONLY artists
 
 
 --
--- Name: artists_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: artists_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY artists
@@ -640,7 +642,7 @@ ALTER TABLE ONLY artists
 
 
 --
--- Name: connections_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: connections_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY connections
@@ -648,7 +650,7 @@ ALTER TABLE ONLY connections
 
 
 --
--- Name: connections_red_blue_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: connections_red_blue_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY connections
@@ -656,7 +658,7 @@ ALTER TABLE ONLY connections
 
 
 --
--- Name: duration_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: duration_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY duration
@@ -664,23 +666,7 @@ ALTER TABLE ONLY duration
 
 
 --
--- Name: files_path_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT files_path_key UNIQUE (path);
-
-
---
--- Name: files_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT files_pkey PRIMARY KEY (id);
-
-
---
--- Name: history_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: history_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY history
@@ -688,7 +674,15 @@ ALTER TABLE ONLY history
 
 
 --
--- Name: playing_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: pids_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
+--
+
+ALTER TABLE ONLY pids
+    ADD CONSTRAINT pids_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: playing_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY playing
@@ -696,7 +690,7 @@ ALTER TABLE ONLY playing
 
 
 --
--- Name: queue_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: queue_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY queue
@@ -704,7 +698,7 @@ ALTER TABLE ONLY queue
 
 
 --
--- Name: queue_recording_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: queue_recording_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY queue
@@ -712,7 +706,7 @@ ALTER TABLE ONLY queue
 
 
 --
--- Name: ratings_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: ratings_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY ratings
@@ -720,7 +714,15 @@ ALTER TABLE ONLY ratings
 
 
 --
--- Name: recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: recordings_hash_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
+--
+
+ALTER TABLE ONLY recordings
+    ADD CONSTRAINT recordings_hash_key UNIQUE (hash);
+
+
+--
+-- Name: recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY recordings
@@ -728,7 +730,7 @@ ALTER TABLE ONLY recordings
 
 
 --
--- Name: replaygain_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: replaygain_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY replaygain
@@ -736,7 +738,7 @@ ALTER TABLE ONLY replaygain
 
 
 --
--- Name: songs_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: songs_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY songs
@@ -744,7 +746,7 @@ ALTER TABLE ONLY songs
 
 
 --
--- Name: songs_title_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: songs_title_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY songs
@@ -752,7 +754,7 @@ ALTER TABLE ONLY songs
 
 
 --
--- Name: things_description_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: things_description_key; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY things
@@ -760,7 +762,7 @@ ALTER TABLE ONLY things
 
 
 --
--- Name: things_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
+-- Name: things_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace:
 --
 
 ALTER TABLE ONLY things
@@ -768,61 +770,38 @@ ALTER TABLE ONLY things
 
 
 --
--- Name: tracks_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
---
-
-ALTER TABLE ONLY tracks
-    ADD CONSTRAINT tracks_pkey PRIMARY KEY (id);
-
-
---
--- Name: version_pkey; Type: CONSTRAINT; Schema: public; Owner: ion; Tablespace: 
---
-
-ALTER TABLE ONLY version
-    ADD CONSTRAINT version_pkey PRIMARY KEY (updated);
-
-
---
--- Name: by_last_recording; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
+-- Name: by_last_recording; Type: INDEX; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE INDEX by_last_recording ON recordings USING btree (played);
 
 
 --
--- Name: by_last_song; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
+-- Name: by_last_song; Type: INDEX; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE INDEX by_last_song ON songs USING btree (played);
 
 
 --
--- Name: hell_if_i_know; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
+-- Name: hell_if_i_know; Type: INDEX; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE UNIQUE INDEX hell_if_i_know ON recordings USING btree (song) WHERE ((artist IS NULL) AND (recorded IS NULL));
 
 
 --
--- Name: unique_recordings; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
+-- Name: unique_recordings; Type: INDEX; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE UNIQUE INDEX unique_recordings ON recordings USING btree (song, artist, recorded);
 
 
 --
--- Name: unique_recordings_artist_unknown; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
+-- Name: unique_recordings_artist_unknown; Type: INDEX; Schema: public; Owner: ion; Tablespace:
 --
 
 CREATE UNIQUE INDEX unique_recordings_artist_unknown ON recordings USING btree (song, recorded) WHERE (artist IS NULL);
-
-
---
--- Name: unique_recordings_recorded_unknown; Type: INDEX; Schema: public; Owner: ion; Tablespace: 
---
-
-CREATE UNIQUE INDEX unique_recordings_recorded_unknown ON recordings USING btree (song, artist) WHERE (recorded IS NULL);
 
 
 --
@@ -858,22 +837,6 @@ ALTER TABLE ONLY connections
 
 
 --
--- Name: duration_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY duration
-    ADD CONSTRAINT duration_id_fkey FOREIGN KEY (id) REFERENCES tracks(id);
-
-
---
--- Name: files_track_fkey; Type: FK CONSTRAINT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY files
-    ADD CONSTRAINT files_track_fkey FOREIGN KEY (track) REFERENCES tracks(id);
-
-
---
 -- Name: history_song_fkey; Type: FK CONSTRAINT; Schema: public; Owner: ion
 --
 
@@ -895,14 +858,6 @@ ALTER TABLE ONLY playing
 
 ALTER TABLE ONLY playing
     ADD CONSTRAINT playing_song_fkey FOREIGN KEY (song) REFERENCES songs(id) ON DELETE CASCADE;
-
-
---
--- Name: playing_which_fkey; Type: FK CONSTRAINT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY playing
-    ADD CONSTRAINT playing_which_fkey FOREIGN KEY (which) REFERENCES tracks(id) ON DELETE CASCADE;
 
 
 --
@@ -958,7 +913,7 @@ ALTER TABLE ONLY recordings
 --
 
 ALTER TABLE ONLY replaygain
-    ADD CONSTRAINT replaygain_id_fkey FOREIGN KEY (id) REFERENCES tracks(id);
+    ADD CONSTRAINT replaygain_id_fkey FOREIGN KEY (id) REFERENCES recordings(id) ON DELETE CASCADE;
 
 
 --
@@ -967,14 +922,6 @@ ALTER TABLE ONLY replaygain
 
 ALTER TABLE ONLY songs
     ADD CONSTRAINT songs_id_fkey FOREIGN KEY (id) REFERENCES things(id) ON DELETE CASCADE;
-
-
---
--- Name: tracks_recording_fkey; Type: FK CONSTRAINT; Schema: public; Owner: ion
---
-
-ALTER TABLE ONLY tracks
-    ADD CONSTRAINT tracks_recording_fkey FOREIGN KEY (recording) REFERENCES recordings(id) ON DELETE CASCADE;
 
 
 --
@@ -990,4 +937,3 @@ GRANT ALL ON SCHEMA public TO PUBLIC;
 --
 -- PostgreSQL database dump complete
 --
-
