@@ -1,4 +1,6 @@
 #include "urlcodec.h"
+#include "pq.h"
+#include "preparation.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,8 +9,8 @@
 
 GMainLoop *loop = NULL;
 
-static gchar* strescape(const gchar* unformatted, 
-			const gchar* targets, 
+static gchar* strescape(const gchar* unformatted,
+			const gchar* targets,
 			const gchar* substs) {
   ssize_t uflen = strlen(unformatted);
   ssize_t tlen = strlen(targets);
@@ -25,16 +27,16 @@ static gchar* strescape(const gchar* unformatted,
 	break;
       }
     }
-    if(found==FALSE) 
+    if(found==FALSE)
       g_string_append_c(results,unformatted[i]);
   }
-  
+
   return g_string_free(results,FALSE);
 }
 
-GstElement* pipe = NULL;
+GstElement* panpipe = NULL;
 
-gboolean justOne = FALSE;
+gint64 lastDuration = -1;
 
 static gboolean
 bus_call (GstBus     *bus,
@@ -42,41 +44,38 @@ bus_call (GstBus     *bus,
           gpointer    data)
 {
     {
-      //g_print("Um %x %x\n",GST_MESSAGE_TYPE(msg),GST_MESSAGE_STREAM_STATUS);
       GstFormat fmt = GST_FORMAT_TIME;
       guint64 len = -1;
-      if(gst_element_query_duration (pipe, &fmt, &len)) {
-        g_print ("(duration #x%lx)\n", len);
-        fflush(stdout);
-        if(justOne==TRUE)
-          g_main_loop_quit(loop);
-        else
-          gst_element_set_state (pipe, GST_STATE_NULL);
-      } 
+      if(gst_element_query_duration (panpipe, &fmt, &len)) {
+        lastDuration = len;
+        gst_element_set_state (panpipe, GST_STATE_NULL);
+        g_main_loop_quit(loop);
+      }
     }
 
-  switch (GST_MESSAGE_TYPE (msg)) {    
+  switch (GST_MESSAGE_TYPE (msg)) {
   case GST_MESSAGE_EOS:
     g_print ("end-of-stream\n");
+    g_main_loop_quit(loop);
     break;
-    
+
   case GST_MESSAGE_ERROR: {
     gchar  *debug;
     GError *error;
-    
+
     gst_message_parse_error (msg, &error, &debug);
     g_free (debug);
-    
+
     g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
-    
+
     g_main_loop_quit (loop);
     break;
   }
 
   case GST_MESSAGE_STREAM_STATUS:
     break;
-  
+
   default:
     break;
   };
@@ -112,62 +111,47 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
       g_object_unref(parentA);
       g_object_unref(parentB);
       exit(3);
-    }				    
+    }
   }
   gst_object_unref (sinkpad);
 }
 
 GstElement* src = NULL;
 GstElement* decoder = NULL;
-static void nextSong(GString* next) {
-  gst_element_set_state (pipe, GST_STATE_NULL);
+static short nextSong(const char* path) {
+  gst_element_set_state (panpipe, GST_STATE_NULL);
   struct stat buf;
-  if(stat(next->str,&buf)!=0) {
-    g_print("(error file-not-found \"%s\")\n",next->str);
+  if(stat(path,&buf)!=0) {
+    return 1;
   } else {
-    g_object_set (src, "location", next->str, NULL);
-    gst_element_set_state (pipe, GST_STATE_PLAYING);
+    g_object_set (src, "location", path, NULL);
+    gst_element_set_state (panpipe, GST_STATE_PLAYING);
+    return 0;
   }
-}
-
-static gboolean on_input(GIOChannel* in, GIOCondition condition, void* whatever) {
-  static GString* buf = NULL;
-  if(!buf) {
-    buf = g_string_sized_new(0x40);
-  }
-
-  GError* error = NULL;
-
-  GIOStatus status = g_io_channel_read_line_string(in,buf,NULL,&error);
-  switch(status) {
-  case G_IO_STATUS_AGAIN: 
-    return TRUE;
-  case G_IO_STATUS_EOF:
-  case G_IO_STATUS_ERROR: 
-    fprintf(stderr,"EEEP\n");
-    g_main_loop_quit(loop);
-    return FALSE;
-  case G_IO_STATUS_NORMAL:
-    buf->str[buf->len-1] = '\0';
-    nextSong(buf);
-    return TRUE;
-  };
-}
-
-
-static void watch_input(void) {
-  GIOChannel* in = g_io_channel_unix_new(0);
-  g_io_add_watch(in,G_IO_IN,(void*)on_input,loop);
 }
 
 int
 main (int argc, char ** argv)
 {
+    PQinit();
+    preparation_t queries[] = {
+        { "nullRecordings",
+          "SELECT id,path FROM recordings WHERE duration IS NULL"},
+        { "deleteRecording",
+            "DELETE FROM recordings WHERE id = $1"},
+        { "setDuration",
+            "UPDATE recordings SET duration = $2 WHERE id = $1"}
+    };
+    prepareQueries(queries);
+    PGresult* recordings = PQexecPrepared(PQconn,"nullRecordings",
+            0,NULL,NULL,NULL,0);
+
+
   gst_init (&argc, &argv);
 
   loop = g_main_loop_new (NULL, FALSE);
 
-  pipe = gst_pipeline_new ("pipeline");
+  panpipe = gst_pipeline_new ("pipeline");
 
   src = gst_element_factory_make ("filesrc", NULL);
 
@@ -181,27 +165,39 @@ main (int argc, char ** argv)
     g_error("_______ could not be created");
 
 
-  GstBus* bus = gst_pipeline_get_bus (GST_PIPELINE (pipe));
+  GstBus* bus = gst_pipeline_get_bus (GST_PIPELINE (panpipe));
   gst_bus_add_watch (bus, bus_call, loop);
   g_object_unref(bus);
 
-  gst_bin_add_many (GST_BIN (pipe), src, decoder, 
+  gst_bin_add_many (GST_BIN (panpipe), src, decoder,
                     alsa, NULL);
 
   // src -> decoder ...> converter -> analyzer -> sink
   gst_element_link(src,decoder);
   g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), alsa);
 
-  if(argc==2) {
-    GString* next = g_string_new(argv[1]);
-    justOne = 1;
-    nextSong(next);    
-  } else {
-    watch_input();
-  }
+    int i;
+    for(i=0;i<PQntuples(recordings);++i) {
+        GString* next = g_string_new(argv[1]);
+        const char* values[2] = { PQgetvalue(recordings,i,0) };
+        int lengths[2] = { PQgetlength(recordings,i,0) };
+        int fmt[] = { 0, 0 };
 
-  g_main_loop_run(loop);
-  gst_element_set_state (pipe, GST_STATE_NULL);
-  gst_object_unref (pipe);
-  return 0;
+        if(0!=nextSong(PQgetvalue(recordings,i,1))) {
+            PQcheckClear(PQexecPrepared(PQconn,"deleteRecording",
+                        1,values,lengths,fmt,0));
+        } else {
+            g_main_loop_run(loop);
+            if(lastDuration>0) {
+                char stdurr[0x100];
+                lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
+                values[1] = stdurr;
+                PQcheckClear(PQexecPrepared(PQconn,"setDuration",
+                        2,values,lengths,fmt,0));
+                lastDuration = -1;
+            }
+        }
+    }
+
+    exit(0);
 }

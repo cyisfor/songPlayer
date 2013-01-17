@@ -22,18 +22,27 @@ void* myPQtest = NULL;
    played. So like -1,2,2,2,2,10,10 the top 2 will play a lot more than with
    -1000,2,2,2,2,10,10 in which case the top 6 will get about equal treatment.
 
+    Median means you can't fucking get rid of half your songs though...
+
+    So the mean is better... at least in that it's possible to have an album
+    of 99% crap and only listen to the 1% you like.
+
    If you chose by the median (number of songs) then when you rate a song down
    it won't affect the frequency songs you like more being played.
+
+
+   I dunno! Going w/ mean.
 */
 
 static PGresult* pickBestRecording(void) {
   int rows,cols;
   char* end = NULL;
   PGresult* result, *result2;
-  uint64_t num;
+  double minScore;
+  double maxScore;
   uint32_t randVal;
   double pivotF;
-  int32_t pivot;
+  double pivot;
   char buf[0x100];
   int length;
   const int fmt = 0;
@@ -44,22 +53,23 @@ static PGresult* pickBestRecording(void) {
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
-  PQassert(result,rows==1 && cols==1);
-  num = strtol(PQgetvalue(result,0,0),&end,10);
+  PQassert(result,rows==1 && cols==2);
+  minScore = strtod(PQgetvalue(result,0,0),&end);
+  maxScore = strtod(PQgetvalue(result,0,1),&end);
   PQclear(result);
 
   double randF = drand48();
   assert(randF >= 0 && randF <= 1);
 
-  pivotF = offsetCurve(1.0-randF);
-  pivot = num * pivotF;
+  pivotF = offsetCurve(randF);
+  pivot = (maxScore - minScore) * pivotF + minScore;
 
   int tries = 0;
   for(;;) {
-    length = snprintf(buf,0x100,"%d",pivot);
+    length = snprintf(buf,0x100,"%f",pivot);
 
     g_message("rand goes %lf to %lf",randF,pivotF);
-    g_message("pivot offset is between 0:%lu is %d",num,pivot);
+    g_message("pivot offset is between %lf:%lf is %f",minScore,maxScore,pivot);
 
     { const char* values[] = { buf };
       result =
@@ -86,28 +96,35 @@ static PGresult* pickBestRecording(void) {
   }
   rows = PQntuples(result2);
   cols = PQnfields(result2);
-  PQassert(result2,rows==1 && cols==1);
-  num = strtol(PQgetvalue(result2,0,0),&end,10);
+  PQassert(result2,rows==1 && cols==2);
+  minScore = strtod(PQgetvalue(result2,0,0),&end);
+  maxScore = strtod(PQgetvalue(result2,0,1),&end);
   PQclear(result2);
 
   randF = drand48();
 
   pivotF = offsetCurve(randF);
-  pivot = num * pivotF;
+  pivot = (maxScore - minScore) * pivotF + minScore;
 
   {
     const char* parameters[2] = { song, buf };
-    int lengths[2] = { length, snprintf(buf,0x100,"%d",pivot) };
+    int lengths[2] = { length, snprintf(buf,0x100,"%f",pivot) };
     const int formats[2] = { 0, 0 };
 
     result2 =
       PQexecPrepared(PQconn,"bestRecording",
                      2,parameters,lengths,formats,0);
-  }
 
   rows = PQntuples(result2);
   if(rows==0) {
-      g_error("Song %s has no recordings!\n",song);
+      PQclear(result2);
+      PQexecPrepared(PQconn,"aRecording",
+                     1,parameters,lengths,formats,0);
+
+      rows = PQntuples(result2);
+      if(rows==0)
+          g_error("Song %s has no recordings!\n",song);
+  }
   }
   cols = PQnfields(result2);
   PQclear(result);
@@ -191,15 +208,15 @@ static void* queueChecker(void* arg) {
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
     { "bestSongRange",
-      "SELECT COUNT(songs.id) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue))" },
+      "SELECT MIN(ratings.score),MAX(ratings.score) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue))" },
     { "bestSong",
-      "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) ORDER BY score,random() DESC OFFSET $1 LIMIT 1" },
+        "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) AND score >= $1 ORDER BY score,random() LIMIT 1" },
     { "bestRecordingRange",
-      "SELECT COUNT(recordings.id) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
+      "SELECT MIN(ratings.score),MAX(ratings.score) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
     { "bestRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC OFFSET $2 LIMIT 1" },
+      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 AND score >= $2 ORDER BY score LIMIT 1" },
     { "aRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC LIMIT 1" },
+      "SELECT recordings.id FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1"},
     { "insertIntoQueue",
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"}
   };

@@ -13,6 +13,8 @@ pthread_cond_t _songInQueue = PTHREAD_COND_INITIALIZER;
 #define DESIRED 0x3
 uint8_t queueSize = 0;
 
+#ifdef SPAMMY
+
 void message_w_threadid(const char* fmt, ...) {
     fprintf(stdout,"(%lx) ",pthread_self());
     va_list list;
@@ -21,6 +23,12 @@ void message_w_threadid(const char* fmt, ...) {
     va_end(list);
     fputc('\n',stdout);
 }
+
+#else
+
+#define message_w_threadid(...)
+
+#endif
 
 void setNumQueued(uint8_t num) {
   // don't need a lock at this point...

@@ -314,7 +314,9 @@ int main(int argc, char** argv) {
     COMPILEO(scan);
     linky("scanner","scan.o","urlcodec.o",NULL);
     COMPILEO(durationscan);
-    linky("dscanner","durationscan.o","urlcodec.o",NULL);
+    linky("dscanner","durationscan.o","urlcodec.o","pq.o","preparation.o",NULL);
+    COMPILEO(best);
+    linky("best","best.o","pq.o","preparation.o",NULL);
     COMPILEO(versioning);
     linky("migrate","versioning.o","pq.o",NULL);
     COMPILEO(next);
