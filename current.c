@@ -6,7 +6,8 @@
 
 int main (int argc, char ** argv)
 {
-    PQinit();
+  settitle("current");
+  PQinit();
   preparation_t queries[] = {
     "getTopSong",
       "SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
@@ -20,32 +21,35 @@ int main (int argc, char ** argv)
           "ORDER BY queue.id ASC LIMIT 2"
   };
   prepareQueries(queries);
-  PGresult* result = 
-      logExecPrepared(PQconn,"getTopSong",
-          0,NULL,NULL,NULL,0);
-  int i = 0;
-  for(;i<PQnfields(result);++i) {
-      fputs(PQfname(result,i),stdout);
-      fputs(": ",stdout);
-      if(i==3) {
-          unsigned long duration = atol(PQgetvalue(result,0,i)) / 1000000000;          
-          if(duration > 60) {
-              int seconds = duration % 60;
-              printf("%um",duration / 60);
-              if(seconds) {
-                  printf(" %us\n",seconds);
+  for(;;) {
+      PGresult* result = 
+          logExecPrepared(PQconn,"getTopSong",
+              0,NULL,NULL,NULL,0);
+      int i = 0;
+      for(;i<PQnfields(result);++i) {
+          fputs(PQfname(result,i),stdout);
+          fputs(": ",stdout);
+          if(i==3) {
+              unsigned long duration = atol(PQgetvalue(result,0,i)) / 1000000000;          
+              if(duration > 60) {
+                  int seconds = duration % 60;
+                  printf("%um",duration / 60);
+                  if(seconds) {
+                      printf(" %us\n",seconds);
+                  } else {
+                      putchar('\n');
+                  }
               } else {
-                  putchar('\n');
+                  printf("%us\n",duration);
               }
           } else {
-              printf("%us\n",duration);
+              puts(PQgetvalue(result,0,i));
           }
-      } else {
-          puts(PQgetvalue(result,0,i));
+
+
       }
-
-      settitle("current");
-
+    sleep(2); // can't set window title using "watch"
+    system("clear");
   }
 
   return 0;

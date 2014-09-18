@@ -4,9 +4,7 @@ PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
 	testadjust testqueue done 
 
-all:: configure dependencies build
-
-configure: make/config.mk
+all:: make/config.mk build
 
 build: $(PROGRAMS)
 
@@ -43,4 +41,4 @@ o/:
 deps/:
 	mkdir $@
 
-.PHONY: clean all configure dependencies build
+.PHONY: clean all configure build
