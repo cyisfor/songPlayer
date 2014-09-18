@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <gst/gst.h>
 #include <string.h>
+#include <sys/stat.h>
 
 GMainLoop *loop = NULL;
 
@@ -44,9 +45,8 @@ bus_call (GstBus     *bus,
           gpointer    data)
 {
     {
-      GstFormat fmt = GST_FORMAT_TIME;
       guint64 len = -1;
-      if(gst_element_query_duration (panpipe, &fmt, &len)) {
+      if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
         lastDuration = len;
         gst_element_set_state (panpipe, GST_STATE_NULL);
         g_main_loop_quit(loop);
@@ -94,9 +94,9 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
   if(sinkpad==NULL) return;
   if (!gst_pad_is_linked (sinkpad)) {
     GstCaps* a;
-    a = gst_pad_get_caps(pad);
+    a = gst_pad_get_current_caps(pad);
     GstCaps* b;
-    b = gst_pad_get_caps(sinkpad);
+    b = gst_pad_get_current_caps(sinkpad);
     GstPadLinkReturn ret = gst_pad_link (pad, sinkpad);
     if(ret == GST_PAD_LINK_NOFORMAT) {
       gst_pad_unlink (pad, sinkpad);
@@ -143,7 +143,7 @@ main (int argc, char ** argv)
             "UPDATE recordings SET duration = $2 WHERE id = $1"}
     };
     prepareQueries(queries);
-    PGresult* recordings = PQexecPrepared(PQconn,"nullRecordings",
+    PGresult* recordings = logExecPrepared(PQconn,"nullRecordings",
             0,NULL,NULL,NULL,0);
 
 
@@ -156,13 +156,13 @@ main (int argc, char ** argv)
   src = gst_element_factory_make ("filesrc", NULL);
 
   // this duration derp
-  decoder = gst_element_factory_make("decodebin2",NULL);
+  decoder = gst_element_factory_make("decodebin",NULL);
   //GstElement* converter = gst_element_factory_make("audioconvert",NULL);
 
   GstElement* alsa = gst_element_factory_make("fakesink", NULL);
 
   if(!(src && decoder && alsa))
-    g_error("_______ could not be created");
+    g_error("%s could not be created",src ? decoder ? "alsa" : "decoder" : "src");
 
 
   GstBus* bus = gst_pipeline_get_bus (GST_PIPELINE (panpipe));
@@ -184,7 +184,7 @@ main (int argc, char ** argv)
         int fmt[] = { 0, 0 };
 
         if(0!=nextSong(PQgetvalue(recordings,i,1))) {
-            PQcheckClear(PQexecPrepared(PQconn,"deleteRecording",
+            PQcheckClear(logExecPrepared(PQconn,"deleteRecording",
                         1,values,lengths,fmt,0));
         } else {
             g_main_loop_run(loop);
@@ -192,7 +192,7 @@ main (int argc, char ** argv)
                 char stdurr[0x100];
                 lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
                 values[1] = stdurr;
-                PQcheckClear(PQexecPrepared(PQconn,"setDuration",
+                PQcheckClear(logExecPrepared(PQconn,"setDuration",
                         2,values,lengths,fmt,0));
                 lastDuration = -1;
             }

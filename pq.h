@@ -13,3 +13,15 @@ void PQbegin(void);
 void PQcommit(void);
 
 void PQcheckClear(PGresult*);
+
+#ifdef DEBUG_STATEMENTS
+PGresult *logExecPrepared(PGconn *conn,
+                         const char *stmtName,
+                         int nParams,
+                         const char * const *paramValues,
+                         const int *paramLengths,
+                         const int *paramFormats,
+                         int resultFormat);
+#else
+#define logExecPrepared PQexecPrepared
+#endif

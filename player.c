@@ -5,8 +5,7 @@
 #include "preparation.h"
 #include "synchronize.h"
 #include "queue.h"
-
-#include <signal.h>
+#include "signals.h"
 
 #include <fcntl.h> // open O_RDONLY
 #include <unistd.h> // STDIN_FILENO
@@ -18,6 +17,8 @@
 #include <stdint.h>
 
 #include <assert.h>
+
+void playerPlay(void);
 
 static gchar* strescape(const gchar* unformatted,
 			const gchar* targets,
@@ -73,13 +74,13 @@ print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
           (g_value_get_boolean (val)) ? "#t" : "#f");
     } else if (GST_VALUE_HOLDS_BUFFER (val)) {
       fprintf(tagHack, "(%s . (buffer %u))", tag,
-          GST_BUFFER_SIZE (gst_value_get_buffer (val)));
-    } else if (GST_VALUE_HOLDS_DATE (val)) {
-	   GDate* date = (GDate*)gst_value_get_date(val);
-           fprintf(tagHack, "(%s . (date 0 0 0 %u %u %u))\n", tag,
-	  	g_date_get_day(date),
-		g_date_get_month(date),
-        g_date_get_year (date));
+          gst_buffer_get_size (gst_value_get_buffer (val)));
+    } else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
+        GstDateTime* date = (GstDateTime*)g_value_get_boxed(val);
+        fprintf(tagHack, "(%s . (date 0 0 0 %u %u %u))\n", tag,
+	  	gst_date_time_has_day(date) ? gst_date_time_get_day(date) : 0,
+		gst_date_time_has_month(date) ? gst_date_time_get_month(date) : 1,
+        gst_date_time_has_year(date) ? gst_date_time_get_year (date) : 0);
     } else {
       fprintf(tagHack, "(%20s . (type %s))", tag, G_VALUE_TYPE_NAME (val));
     }
@@ -99,6 +100,7 @@ bus_call (GstBus     *bus,
     tagHack = NULL;
     write(STDOUT_FILENO,".",1);
     selectDone();
+    playerPlay();
     break;
 
   case GST_MESSAGE_ERROR: {
@@ -148,14 +150,13 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement * sinkElement)
     GstPadLinkReturn ret = gst_pad_link (pad, sinkpad);
     if(ret == GST_PAD_LINK_NOFORMAT) {
       GstCaps* a, *b;
-      a = gst_pad_get_caps(pad);
-      b = gst_pad_get_caps(sinkpad);
+      a = gst_pad_get_current_caps(pad);
+      b = gst_pad_get_current_caps(sinkpad);
       g_warning("Formats of A: %s\nFormats of B:%s\n",
 	      a ? gst_caps_to_string(a) : "<NULL>",
 	      b ? gst_caps_to_string(b) : "<NULL>");
       gst_pad_unlink (pad, sinkpad);
     } else if(ret != GST_PAD_LINK_OK) {
-      g_error("beep");
       GstElement* parentA = gst_pad_get_parent_element(pad);
       GstElement* parentB = gst_pad_get_parent_element(sinkpad);
       g_error ("Failed to link pads! %s - %s : %d",
@@ -180,7 +181,9 @@ static int nextSong(const char* next) {
   struct stat buf;
   if(stat(next,&buf)!=0) {
     write(STDOUT_FILENO,"!",1);
-    exit(1);
+    selectNext();
+    playerPlay();
+    return 1;
   } else {
     g_object_set (src, "location", next, NULL);
     gst_element_set_state (pipeline, GST_STATE_PLAYING);
@@ -198,29 +201,27 @@ struct {
                      gboolean active);
 } g_activate_gain = { 0, 0, 0, NULL };
 
-static gboolean on_activate(GstPad* pad, gboolean active) {
-  gboolean ret = FALSE;
-  if(g_activate_gain.super)
-    ret = g_activate_gain.super(pad,active);
+static gboolean on_activate(GstPad* pad, GstObject* parent) {
+  gst_pad_activate_mode(pad,GST_PAD_MODE_PUSH,TRUE);
 
-  if(active==FALSE) return ret;
-
-  GstTagList* list = gst_tag_list_new();
+  GstTagList* list = gst_tag_list_new_empty();
   GValue value;
   memset(&value,0,sizeof(value));
   g_value_init(&value,G_TYPE_DOUBLE);
   fprintf(stderr,"bwub setting gain/peak %f %f %f\n",
           g_activate_gain.peak, g_activate_gain.gain,
           g_activate_gain.level);
-
-  g_value_set_double(&value,g_activate_gain.gain);
+  g_value_set_double(&value,g_activate_gain.gain*2);
   gst_tag_list_add_value(list, GST_TAG_MERGE_REPLACE, GST_TAG_TRACK_GAIN, &value);
-  g_value_set_double(&value,g_activate_gain.peak);
+  gst_tag_list_add_value(list, GST_TAG_MERGE_REPLACE, GST_TAG_ALBUM_GAIN, &value);
+  g_value_set_double(&value,g_activate_gain.peak*2);
   gst_tag_list_add_value(list,  GST_TAG_MERGE_REPLACE, GST_TAG_TRACK_PEAK, &value);
+  gst_tag_list_add_value(list,  GST_TAG_MERGE_REPLACE, GST_TAG_ALBUM_PEAK, &value);
   g_value_set_double(&value,g_activate_gain.level);
   gst_tag_list_add_value(list,  GST_TAG_MERGE_REPLACE, GST_TAG_REFERENCE_LEVEL, &value);
   assert(TRUE==gst_pad_send_event(pad,gst_event_new_tag(list)));
-  return ret;
+
+  return TRUE;
 }
 
 /* Note: will restart the current song if called. */
@@ -235,7 +236,7 @@ void playerPlay(void) {
   for(;;) {
       waitUntilSongInQueue();
       result =
-          PQexecPrepared(PQconn,"getTopRecording",
+          logExecPrepared(PQconn,"getTopRecording",
                          0,NULL,NULL,NULL,0);
       rows = PQntuples(result);
       if(rows>0) break;
@@ -306,6 +307,7 @@ static gboolean on_input (GIOChannel *source,
     if(ready) break;
   }
   selectNext();
+  playerPlay();
   return TRUE;
 }
 
@@ -324,6 +326,7 @@ static void signalNext(int signal) {
   // this should execute in the main GTK thread (see signals.c)
   queueInterrupted = 1;
   selectNext();
+  playerPlay();
 }
 
 static void restartPlayer(int signal) {
@@ -358,7 +361,7 @@ int main (int argc, char ** argv)
     int lengths[1];
     const int fmt[1] = { 0 };
     lengths[0] = snprintf(buf,8,"%d",getpid());
-    PQexecPrepared(PQconn,"setPID",
+    logExecPrepared(PQconn,"setPID",
                    1,values,lengths,fmt,0);
   }
 
@@ -369,7 +372,7 @@ int main (int argc, char ** argv)
   src = gst_element_factory_make ("filesrc", NULL);
 
   // this parses the FLAC tags to replay gain stuff.
-  GstElement* decoder = gst_element_factory_make("decodebin2",NULL);
+  GstElement* decoder = gst_element_factory_make("decodebin",NULL);
   GstElement* converter = NULL;
   GstElement* adjuster = NULL;
   if(!getenv("noreplaygain")) {
@@ -380,18 +383,27 @@ int main (int argc, char ** argv)
     // XXX: meh! this also needs to only on_activate when the
     // FLUSH_STOP event comes around. Have to wrap the event
     // handler too?
-    g_activate_gain.super = rgsource->activatepushfunc;
-    gst_pad_set_activatepush_function(rgsource,on_activate);
+    gst_pad_set_activate_function(rgsource,on_activate);
     if(!(adjuster && converter))
       g_error("Adjuster could not be created");
     g_object_set (adjuster, "album-mode", FALSE, NULL);
     g_object_set (adjuster, "pre-amp", 6.0, NULL);
-    g_object_set (adjuster, "headroom", 0.0, NULL);
+    g_object_set (adjuster, "headroom", 1.0, NULL);
   }
 
-  GstElement* alsa = gst_element_factory_make("alsasink", NULL);
+  GstElement* sink = gst_element_factory_make("alsasink", NULL);
 
-  if(!(src && decoder && alsa))
+  if(!sink)
+    g_error("Sound is disabled or broken god damn doodley");
+
+  /* g_object_set(sink,
+          "volume",2.0,
+          NULL); */
+
+  if(!src)
+      g_error("Source no exist");
+
+  if(!(src && decoder && sink))
   	g_error("One element could not be created...");
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -400,16 +412,16 @@ int main (int argc, char ** argv)
   if(adjuster)
     gst_bin_add_many (GST_BIN (pipeline), src, decoder,
 		      converter, adjuster,
-		      alsa, NULL);
+		      sink, NULL);
   else
-    gst_bin_add_many (GST_BIN (pipeline), src, decoder, alsa, NULL);
+    gst_bin_add_many (GST_BIN (pipeline), src, decoder, sink, NULL);
 
   gst_element_link(src,decoder);
   if(adjuster) {
-    gst_element_link_many(converter, adjuster, alsa, NULL);
+    gst_element_link_many(converter, adjuster, sink, NULL);
     g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   } else {
-    g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), alsa);
+    g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), sink);
   }
 
   //watchInput(loop);

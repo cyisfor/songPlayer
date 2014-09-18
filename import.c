@@ -41,7 +41,7 @@ int forkpipe(int notpipe[2]) {
 
 static void fixEmptyHashes(void) {
     for(;;) {
-        PGresult* empties = PQexecPrepared(PQconn,
+        PGresult* empties = logExecPrepared(PQconn,
                                            "emptyHashes",
                                            0,
                                            NULL,
@@ -62,7 +62,7 @@ static void fixEmptyHashes(void) {
             const char* values[2] = { id, h };
             int lengths[2] = { strlen(id), strlen(h) };
             int fmt[2] = { 0, 0 };
-            PQcheckClear(PQexecPrepared(PQconn,
+            PQcheckClear(logExecPrepared(PQconn,
                                    "setHash",
                                    2,
                                    values,
@@ -81,7 +81,7 @@ char* findWhat(const char* what, const char* uniq) {
     const char* values[1] = { uniq };
     int lengths[1] = { strlen(uniq) };
     int fmt[1] = { 0 };
-    PGresult* r = PQexecPrepared(PQconn,what,
+    PGresult* r = logExecPrepared(PQconn,what,
                                  1,
                                  values, lengths, fmt, 0);
     PQassert(r,r && PQresultStatus(r)==PGRES_TUPLES_OK);
@@ -96,7 +96,7 @@ void setWhat(const char* what, const char* thing, const char* id) {
     const char* values[2] = { id, thing };
     int lengths[2] = { strlen(id), strlen(thing) };
     int fmt[2] = { 0, 0 };
-    PGresult* r = PQexecPrepared(PQconn,what,
+    PGresult* r = logExecPrepared(PQconn,what,
                                  2,
                                  values, lengths, fmt, 0);
     PQassert(r,r && PQresultStatus(r)==PGRES_COMMAND_OK);
@@ -111,7 +111,7 @@ char* findRecording(const char* song, const char* recorded, const char* artist, 
     const char* values[4] = { song, recorded, artist, id};
     int lengths[4] = { strlen(song), recorded ? strlen(recorded) : 0, artist ? strlen(artist) : 0, strlen(id) };
     int fmt[4] = { 0, 0, 0, 0};
-    PGresult* r = PQexecPrepared(PQconn,"updateRecording",
+    PGresult* r = logExecPrepared(PQconn,"updateRecording",
                                  4,
                                  values,lengths,fmt,0);
     puts("beep");

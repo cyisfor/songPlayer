@@ -1,4 +1,3 @@
-#include "player.h"
 #include "preparation.h"
 #include "queue.h"
 #include "synchronize.h"
@@ -17,17 +16,16 @@
 
 void selectNext(void) {
   PGresult *result =
-    PQexecPrepared(PQconn,"popTopSong",
+    logExecPrepared(PQconn,"popTopSong",
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
   PQclear(result);
   songOutOfQueue();
-  playerPlay();
 }
 
 void selectDone(void) {
   PGresult *result =
-    PQexecPrepared(PQconn,"currentSongWasPlayed",
+    logExecPrepared(PQconn,"currentSongWasPlayed",
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_TUPLES_OK);
   PQclear(result);

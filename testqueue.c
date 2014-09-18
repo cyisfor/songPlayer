@@ -33,7 +33,7 @@ void main(void) {
       for(;;) {
           waitUntilSongInQueue();
           result =
-              PQexecPrepared(PQconn,"getTopRecording",
+              logExecPrepared(PQconn,"getTopRecording",
                              0,NULL,NULL,NULL,0);
           rows = PQntuples(result);
           if(rows>0) break;

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <gst/gst.h>
 #include <string.h>
+#include <sys/stat.h>
 
 static gchar* strescape(const gchar* unformatted,
 			const gchar* targets,
@@ -37,7 +38,7 @@ char* currentRecording = NULL;
 GstElement* src = NULL;
 GstElement* derpipe = NULL;
 static void nextSong(void) {
-    PGresult* next = PQexecPrepared(PQconn,
+    PGresult* next = logExecPrepared(PQconn,
                                     "nextRGlessRecording",
                                     0,
                                     NULL,
@@ -83,7 +84,7 @@ void setReplayGain(struct rginfo* info) {
     const char* values[] = { currentRecording, peak, gain, level };
     int lengths[] = { strlen(currentRecording), plen, glen, llen };
     int fmt[] = { 0, 0, 0, 0 };
-    PQcheckClear(PQexecPrepared(PQconn,
+    PQcheckClear(logExecPrepared(PQconn,
                                 "setReplayGain",
                                 4,
                                 values,
@@ -211,7 +212,7 @@ main (int argc, char ** argv)
         { "nextRGlessRecording",
           "SELECT path,recordings.id FROM recordings LEFT OUTER JOIN replaygain ON replaygain.id = recordings.id WHERE replaygain.id IS NULL" },
         { "setReplayGain",
-          "INSERT INTO replaygain (id,gain,peak,level) VALUES ($1,$2,$3,$4)"}
+          "INSERT INTO replaygain (id,peak,gain,level) VALUES ($1,$2,$3,$4)"}
     };
 
     prepareQueries(queries);
@@ -225,19 +226,19 @@ main (int argc, char ** argv)
   src = gst_element_factory_make ("filesrc", NULL);
 
   // this parses the FLAC tags to replay gain stuff.
-  GstElement* decoder = gst_element_factory_make("decodebin2",NULL);
+  GstElement* decoder = gst_element_factory_make("decodebin",NULL);
   GstElement* converter = gst_element_factory_make("audioconvert",NULL);
   GstElement* analyzer = gst_element_factory_make("rganalysis",NULL);
 
   GstElement* alsa = gst_element_factory_make("fakesink", NULL);
 
   if(!(src && decoder && converter && analyzer && alsa))
-    g_error("_______ could not be created");
+    g_error("%s could not be created",src ? decoder ? converter ? analyzer ? "alsa" : "analyzer" : "converter" : "decoder" : "src");
 
   GValue val = { 0, };
 
   g_value_init (&val, G_TYPE_INT);
-  g_value_set_char (&val, 1);
+  g_value_set_schar (&val, 1);
 
   g_object_set_property(G_OBJECT(analyzer),"num-tracks",&val);
   g_value_unset(&val);

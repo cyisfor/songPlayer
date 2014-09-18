@@ -4,9 +4,10 @@
 #include <stdlib.h>
 #include <gst/gst.h>
 #include <string.h>
+#include <sys/stat.h>
 
-static gchar* strescape(const gchar* unformatted, 
-			const gchar* targets, 
+static gchar* strescape(const gchar* unformatted,
+			const gchar* targets,
 			const gchar* substs) {
   ssize_t uflen = strlen(unformatted);
   ssize_t tlen = strlen(targets);
@@ -23,10 +24,10 @@ static gchar* strescape(const gchar* unformatted,
 	break;
       }
     }
-    if(found==FALSE) 
+    if(found==FALSE)
       g_string_append_c(results,unformatted[i]);
   }
-  
+
   return g_string_free(results,FALSE);
 }
 
@@ -58,9 +59,9 @@ print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
           (g_value_get_boolean (val)) ? "#t" : "#f");
     } else if (GST_VALUE_HOLDS_BUFFER (val)) {
       g_print ("(%s . (buffer %u))", tag,
-          GST_BUFFER_SIZE (gst_value_get_buffer (val)));
-    } else if (GST_VALUE_HOLDS_DATE (val)) {
-	   GDate* date = (GDate*)gst_value_get_date(val);
+              gst_buffer_get_size(gst_value_get_buffer (val)));
+    } else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
+	   GDate* date = (GDate*)g_value_get_boxed(val);
       g_print ("(%s . (date 0 0 0 %u %u %u))\n", tag,
 	  	g_date_get_day(date),
 		g_date_get_month(date),
@@ -83,21 +84,21 @@ bus_call (GstBus     *bus,
   case GST_MESSAGE_EOS:
     g_print ("end-of-stream\n");
     break;
-    
+
   case GST_MESSAGE_ERROR: {
     gchar  *debug;
     GError *error;
-    
+
     gst_message_parse_error (msg, &error, &debug);
     g_free (debug);
-    
+
     g_printerr ("Error: %s\n", error->message);
     g_error_free (error);
-    
+
     g_main_loop_quit (loop);
     break;
   }
-    
+
   case GST_MESSAGE_TAG: {
     GstTagList *tags = NULL;
     gst_message_parse_tag (msg, &tags);
@@ -105,7 +106,7 @@ bus_call (GstBus     *bus,
     gst_tag_list_free(tags);
     break;
   }
-    
+
   default:
     break;
   };
@@ -124,9 +125,9 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
   if(sinkpad==NULL) return;
   if (!gst_pad_is_linked (sinkpad)) {
     GstCaps* a;
-    a = gst_pad_get_caps(pad);
+    a = gst_pad_get_current_caps(pad);
     GstCaps* b;
-    b = gst_pad_get_caps(sinkpad);
+    b = gst_pad_get_current_caps(sinkpad);
     g_warning("Formats of A: %s\nFormats of B: %s\n",
               a ? gst_caps_to_string(a) : "<NULL>",
               b ? gst_caps_to_string(b) : "<NULL>");
@@ -145,7 +146,7 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
       g_object_unref(parentA);
       g_object_unref(parentB);
       exit(3);
-    }				    
+    }
   }
   gst_object_unref (sinkpad);
 }
@@ -159,12 +160,11 @@ static void nextSong(GString* next) {
     g_print("(error file-not-found \"%s\")\n",next->str);
   } else {
     g_object_set (src, "location", next->str, NULL);
-    GstFormat fmt = GST_FORMAT_TIME;
     gint64 len = -1;
-    if(gst_element_query_duration (pipe, &fmt, &len)) {
+    if(gst_element_query_duration (pipe, GST_FORMAT_TIME, &len)) {
       g_print ("(duration #x%lx)\n", len);
       fflush(stdout);
-    } 
+    }
     gst_element_set_state (pipe, GST_STATE_PLAYING);
   }
 }
@@ -179,10 +179,10 @@ static gboolean on_input(GIOChannel* in, GIOCondition condition, GMainLoop* loop
 
   GIOStatus status = g_io_channel_read_line_string(in,buf,NULL,&error);
   switch(status) {
-  case G_IO_STATUS_AGAIN: 
+  case G_IO_STATUS_AGAIN:
     return TRUE;
   case G_IO_STATUS_EOF:
-  case G_IO_STATUS_ERROR: 
+  case G_IO_STATUS_ERROR:
     fprintf(stderr,"EEEP\n");
     g_main_loop_quit(loop);
     return FALSE;
@@ -223,7 +223,7 @@ main (int argc, char ** argv)
   GValue val = { 0, };
 
   g_value_init (&val, G_TYPE_INT);
-  g_value_set_char (&val, 1);
+  g_value_set_schar (&val, 1);
 
   g_object_set_property(G_OBJECT(analyzer),"num-tracks",&val);
   g_value_unset(&val);
@@ -232,7 +232,7 @@ main (int argc, char ** argv)
   gst_bus_add_watch (bus, bus_call, loop);
   g_object_unref(bus);
 
-  gst_bin_add_many (GST_BIN (pipe), src, decoder, 
+  gst_bin_add_many (GST_BIN (pipe), src, decoder,
                     converter, analyzer, alsa, NULL);
 
   // src -> decoder ...> converter -> analyzer -> sink

@@ -4,7 +4,7 @@
 void prepareQueries_p(preparation_t queries[],ssize_t num) {
   int i;
   for(i=0;i<num;++i) {
-    printf("Preparing query %s %p\n",queries[i].name,PQconn);
+    //fprintf(stderr,"Preparing query %s %p\n",queries[i].name,PQconn);
     PGresult* result = 
       PQprepare(PQconn,
                 queries[i].name,

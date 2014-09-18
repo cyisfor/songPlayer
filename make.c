@@ -276,12 +276,13 @@ int main(int argc, char** argv) {
     struct string* allc = stringJoin(3,
                                      makeString("-g"),
                                      slurp("libgcrypt-config",1,"--cflags"),
-                                     slurp("pkg-config",2,"gstreamer-0.10","--cflags"));
+                                     slurp("pkg-config",2,"gstreamer-1.0","--cflags"));
 
-    struct string* alll = stringJoin(3,
+    struct string* alll = stringJoin(4,
                                      makeString("-lpq"),
+                                     makeString("-lm"),
                                      slurp("libgcrypt-config",1,"--libs"),
-                                     slurp("pkg-config",2,"gstreamer-0.10","--libs"));
+                                     slurp("pkg-config",2,"gstreamer-1.0","--libs"));
     if(allc) {
         setenv("COMPILEARGS",allc->str,1);
         free(allc->str);
@@ -321,6 +322,8 @@ int main(int argc, char** argv) {
     linky("migrate","versioning.o","pq.o",NULL);
     COMPILEO(next);
     linky("next","next.o","pq.o",NULL);
+    COMPILEO(testadjust);
+    linky("testadjust","testadjust.o","adjust.o",NULL);
     COMPILEO(graph);
     linky("graph","graph.o","adjust.o",NULL);
     COMPILEO(mode);
@@ -330,5 +333,9 @@ int main(int argc, char** argv) {
           "adjust.o","preparation.o",
           "synchronize.o","select.o",
           "queue.o",NULL);
+    COMPILEO(current);
+    linky("current","current.o","pq.o","preparation.o",NULL);
+    COMPILEO(enqueue);
+    linky("enqueue","enqueue.o","pq.o","preparation.o","queue.o","adjust.o","synchronize.o",NULL);
 #undef COMPILEO
 }

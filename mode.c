@@ -17,6 +17,7 @@ void switchMode(const char* who) {
         }
         PQclear(res);
     }
+  if(0==needRestart) return;
   const char* values[] = { who };
   const int lengths[] = { strlen(who) };
   const int fmt[] = { 0 };
@@ -29,7 +30,6 @@ void switchMode(const char* who) {
   PQclear(PQexecParams(PQconn,"DELETE FROM queue",
                        0,NULL,NULL,NULL,NULL,0));
 
-  if(0==needRestart) return;
 
   PGresult* result =
     PQexecParams(PQconn,"SELECT pid FROM pids WHERE id = 0",
@@ -54,4 +54,5 @@ int main(void) {
     switchMode("3");
 
   printf("%s mode\n",who);
+  return 0;
 }

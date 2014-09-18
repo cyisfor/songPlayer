@@ -28,4 +28,5 @@ $1) FROM mode",
 
   if(PQntuples(result)==0) return 3;
   kill(atoi(PQgetvalue(result,0,0)),SIGUSR1);
+  return 0;
 }

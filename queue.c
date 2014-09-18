@@ -32,8 +32,7 @@ void* myPQtest = NULL;
 
 
    I dunno! Going w/ mean.
-#else /* MEDIAN */
-
+==========
  Choose according to the number of songs, not the score range.
    If you chose by the mean (least to greatest score) then when you rate
    a song down least, it will decrease the frequency that songs you like are
@@ -43,6 +42,8 @@ void* myPQtest = NULL;
    If you chose by the median (number of songs) then when you rate a song down
    it won't affect the frequency songs you like more being played.
 */
+
+#undef MEAN
 
 static PGresult* pickBestRecording(void) {
   int rows,cols;
@@ -66,7 +67,7 @@ static PGresult* pickBestRecording(void) {
   char* song;
  TRYAGAIN:
   result =
-    PQexecPrepared(PQconn,"bestSongRange",
+    logExecPrepared(PQconn,"bestSongRange",
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
@@ -85,6 +86,7 @@ static PGresult* pickBestRecording(void) {
 
 #ifdef MEAN
   pivotF = offsetCurve(randF);
+  assert(pivotF >= 0 && pivotF <= 1);
   pivot = (maxScore - minScore) * pivotF + minScore;
 
   int tries = 0;
@@ -94,7 +96,7 @@ static PGresult* pickBestRecording(void) {
     g_message("rand goes %lf to %lf",randF,pivotF);
     g_message("pivot offset is between %lf:%lf is %f",minScore,maxScore,pivot);
 #else /* MEDIAN */
-  pivotF = offsetCurve(1.0-randF);
+  pivotF = offsetCurve(randF);
   pivot = num * pivotF;
 
   int tries = 0;
@@ -107,7 +109,7 @@ static PGresult* pickBestRecording(void) {
 
     { const char* values[] = { buf };
       result =
-        PQexecPrepared(PQconn,"bestSong",
+        logExecPrepared(PQconn,"bestSong",
                      1,values,&length,&fmt,0);
     }
     rows = PQntuples(result);
@@ -118,12 +120,6 @@ static PGresult* pickBestRecording(void) {
 
   // note: this is a serialized integer, not a title or path.
   song = PQgetvalue(result,0,0);
-#ifdef MEAN
-
-  g_message("Best song: %s %s",song,PQgetvalue(result,0,1));
-#else /* MEDIAN */
-#endif /* MEAN */
-
   g_message("Best song: %s %s",song,PQgetvalue(result,0,1));
 
 #ifdef MEAN
@@ -133,7 +129,7 @@ static PGresult* pickBestRecording(void) {
 #endif /* MEAN */
   { const char* values[] = { song };
     result2 =
-      PQexecPrepared(PQconn,"bestRecordingRange",
+      logExecPrepared(PQconn,"bestRecordingRange",
                      1,values,&length,&fmt,0);
   }
   rows = PQntuples(result2);
@@ -167,14 +163,14 @@ static PGresult* pickBestRecording(void) {
     const int formats[2] = { 0, 0 };
 
     result2 =
-      PQexecPrepared(PQconn,"bestRecording",
+      logExecPrepared(PQconn,"bestRecording",
                      2,parameters,lengths,formats,0);
 #ifdef MEAN
 
   rows = PQntuples(result2);
   if(rows==0) {
       PQclear(result2);
-      PQexecPrepared(PQconn,"aRecording",
+      logExecPrepared(PQconn,"aRecording",
                      1,parameters,lengths,formats,0);
 
       rows = PQntuples(result2);
@@ -198,14 +194,15 @@ static PGresult* pickBestRecording(void) {
   return result2;
 }
 
+
 static uint8_t getNumQueued(void);
 
 volatile uint8_t queueInterrupted = 0;
 
 static uint8_t queueHighestRated(void) {
-    PQcheckClear(PQexecPrepared(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
-    PQcheckClear(PQexecPrepared(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
-    PQcheckClear(PQexecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
+    PQcheckClear(logExecPrepared(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
+    PQcheckClear(logExecPrepared(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
+    PQcheckClear(logExecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
 
 TRYAGAIN:
   queueInterrupted = 0;
@@ -227,12 +224,32 @@ TRYAGAIN:
   PQassert(result,rows==1 && cols==1);
 
 #endif /* MEAN */
+
+  g_message("Making sure exists");
+  { const char* parameters[] = { PQgetvalue(result,0,0), "path not found" };
+      int len[] = { strlen(parameters[0]), sizeof("path not found") };
+      const int fmt[] = { 0, 0 };
+      struct stat buf;
+      PGresult* exists = logExecPrepared(PQconn,"getPath",
+              1,parameters,len,fmt,0);
+      if(!PQgetvalue(exists,0,0) ||
+            (0!=stat(PQgetvalue(exists,0,0),&buf))) {
+            g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
+            PQclear(exists);
+            PQcheckClear(logExecPrepared(PQconn,"blacklist",
+                        2,parameters,len,fmt,0));
+            PQclear(result);
+            return queueHighestRated();
+        }
+
+    }
+
   g_message("Inserting %s",PQgetvalue(result,0,0));
   const char* parameters[] = { PQgetvalue(result,0,0) };
   int len[] =  { strlen(parameters[0]) };
   const int fmt[] = { 0 };
   PGresult* result2 =
-    PQexecPrepared(PQconn,"insertIntoQueue",
+    logExecPrepared(PQconn,"insertIntoQueue",
                    1,parameters,len,fmt,0);
   PQclear(result);
   PQassert(result2,(long int)result2);
@@ -241,9 +258,10 @@ TRYAGAIN:
   return getNumQueued();
 }
 
+
 static uint8_t getNumQueued(void) {
   PGresult* result =
-    PQexecPrepared(PQconn,"numQueued",
+    logExecPrepared(PQconn,"numQueued",
                    0,NULL,NULL,NULL,0);
   int rows = PQntuples(result);
   int cols = PQnfields(result);
@@ -253,6 +271,11 @@ static uint8_t getNumQueued(void) {
   g_message("Num queued is now %d",numQueued);
   PQclear(result);
   return numQueued;
+}
+
+static void expireProblems(void) {
+    PQclear(logExecPrepared(PQconn,"expireProblems",
+                0,NULL,NULL,NULL,0));
 }
 
 static void* queueChecker(void* arg) {
@@ -273,14 +296,14 @@ static void* queueChecker(void* arg) {
     { "scoreByLast",
       "SELECT timeConnectionThingy(1)" },
     { "rateByPlayer",
-      "SELECT rate(0,100)" },
+      "SELECT rate(0,1)" },
     { "resetRatings",
       "DELETE FROM ratings"},
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
     { "bestSongRange",
 #ifdef MEAN
-      "SELECT MIN(ratings.score),MAX(ratings.score) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue))" },
+      "SELECT MIN(ratings.score),MAX(ratings.score) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))" },
     { "bestSong",
         "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) AND score >= $1 ORDER BY score,random() LIMIT 1" },
     { "bestRecordingRange",
@@ -290,7 +313,7 @@ static void* queueChecker(void* arg) {
     { "aRecording",
       "SELECT recordings.id FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1"},
 #else /* MEDIAN */
-      "SELECT COUNT(songs.id) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue))" },
+      "SELECT COUNT(songs.id) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))" },
     { "bestSong",
       "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) ORDER BY score,random() DESC OFFSET $1 LIMIT 1" },
     { "bestRecordingRange",
@@ -301,7 +324,13 @@ static void* queueChecker(void* arg) {
       "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC LIMIT 1" },
 #endif /* MEAN */
     { "insertIntoQueue",
-      "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"}
+      "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
+    { "getPath",
+        "SELECT path FROM recordings WHERE id = $1" },
+    { "blacklist",
+        "INSERT INTO problems (id,reason) VALUES ($1,$2)" },
+    { "expireProblems",
+        "DELETE FROM problems WHERE clock_timestamp() - created > '1 hour'" }
   };
 
   prepareQueries(queries);
@@ -309,7 +338,10 @@ static void* queueChecker(void* arg) {
 
   setupOffsetCurve(0.9);
 
+  srand48(time(NULL));
+
   for(;;) {
+    expireProblems();
     fillQueue(queueHighestRated);
     waitUntilQueueNeeded(getNumQueued);
   }
@@ -322,4 +354,15 @@ void queueSetup(void) {
   pthread_attr_setdetachstate(&attr,PTHREAD_CREATE_DETACHED);
 
   pthread_create(&thread,&attr,queueChecker,NULL);
+}
+
+void enqueue(char* id) {
+    const char* parameters[] = {id};
+    int len[] = {strlen(id)};
+    const int fmt[] = { 0 };
+    PGresult* result = 
+        logExecPrepared(PQconn,"insertIntoQueue",
+                   1,parameters,len,fmt,0);
+    PQassert(result,(long int)result);
+    PQclear(result);
 }
