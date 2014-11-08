@@ -47,6 +47,7 @@ bus_call (GstBus     *bus,
     {
       guint64 len = -1;
       if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
+        printf("Found duration %lld\n",len);
         lastDuration = len;
         gst_element_set_state (panpipe, GST_STATE_NULL);
         g_main_loop_quit(loop);

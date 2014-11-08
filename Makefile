@@ -2,7 +2,7 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done 
+	testadjust testqueue done ratebytitle
 
 all:: make/config.mk build
 
@@ -11,14 +11,15 @@ build: $(PROGRAMS)
 include make/implicit.mk
 
 make/config.mk:
-	echo -n CFLAGS:="-g " > $@ ;\
-	libgcrypt-config --cflags | head -c -1 >>$@ ;\
-	echo -n " "  >> $@ ;\
-	pkg-config gstreamer-1.0 --cflags >>$@ ;\
-	echo -n LDFLAGS:="-lpq -lm " >>$@ ;\
-	libgcrypt-config --libs | head -c -1 >>$@ ;\
-	echo -n " "  >> $@ ;\
-	pkg-config gstreamer-1.0 --libs >>$@
+	echo -n CFLAGS:="-g " > $@.temp
+	libgcrypt-config --cflags | head -c -1 >>$@.temp
+	echo -n " "  >> $@.temp
+	pkg-config gtk+-3.0 gstreamer-1.0 --cflags >>$@.temp
+	echo -n LDFLAGS:="-lpq -lm " >>$@.temp
+	libgcrypt-config --libs | head -c -1 >>$@.temp
+	echo -n " "  >> $@.temp
+	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
+	mv $@.temp $@
 
 -include make/config.mk
 
@@ -40,5 +41,13 @@ o/:
 
 deps/:
 	mkdir $@
+
+ratebytitle: o/ratebytitleglade.o
+
+o/ratebytitleglade.s: ratebytitle.glade
+	luajit -lluarocks.loader makearray.lua gladeFile $< >$@.temp	
+	mv $@.temp $@
+
+o/ratebytitleglade.o: o/ratebytitleglade.s
 
 .PHONY: clean all configure build

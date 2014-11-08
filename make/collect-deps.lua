@@ -1,3 +1,10 @@
+pcall(require,'luarocks.loader')
+local l = require('lpeg')
+
+local eol = -l.P(1)
+local dependency = l.C((1 - l.S(' :\\.'))^1 * '.' * l.S('ch')) * (l.S' \n' + -1)
+local dependencies = l.Ct(l.P{dependency + 1 * l.V(1)}^0)
+
 local deps = {}
 
 local function collect(src)
@@ -8,7 +15,7 @@ local function collect(src)
     local line = inp:read('*a')
     if not inp:close() then return end
 
-    for dep in line:gmatch("[^ :\\]+%.[ch]") do
+    for _,dep in ipairs(dependencies:match(line)) do
         if dep ~= src then
             collect(dep)
         end

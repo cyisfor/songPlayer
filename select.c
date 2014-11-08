@@ -40,7 +40,7 @@ void selectSetup(void) {
 
   preparation_t queries[] = {
     { "currentSongWasPlayed",
-      "SELECT songWasPlayed(recording) FROM queue ORDER BY id ASC LIMIT 1" },
+      "SELECT songWasPlayed(recording) FROM (select recording FROM queue ORDER BY id ASC LIMIT 1) AS fuckeverything" },
     { "popTopSong",
       "DELETE FROM queue WHERE id = (SELECT id FROM queue ORDER BY id ASC LIMIT 1)" },
   };
