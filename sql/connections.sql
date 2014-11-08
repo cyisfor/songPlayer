@@ -1,4 +1,9 @@
-
+CREATE TABLE IF NOT EXISTS ratingHistory(
+    id SERIAL PRIMARY KEY,
+    red INTEGER REFERENCES things(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+    blue INTEGER REFERENCES things(id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL,
+    strength DOUBLE PRECISION
+    time timestamptz DEFAULT now());
 
 CREATE OR REPLACE FUNCTION connectionstrength(_red bigint, _blue bigint, _strength double precision, _incrementally boolean DEFAULT true) RETURNS void
     LANGUAGE plpgsql
