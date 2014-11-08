@@ -1,10 +1,15 @@
+
+
 CREATE OR REPLACE FUNCTION connectionstrength(_red bigint, _blue bigint, _strength double precision, _incrementally boolean DEFAULT true) RETURNS void
     LANGUAGE plpgsql
     AS $$
 DECLARE
        _plur double precision;
 BEGIN
-	IF _incrementally THEN
+    -- this shouldn't commit until the (unexcepted) end of function...
+    INSERT INTO ratingHistory (red,blue,strength) VALUES (_red,_blue,_strength);
+	
+    IF _incrementally THEN
 	   SELECT (strength + _strength) INTO _plur FROM connections WHERE red = _red AND blue = _blue;
 	   IF _plur IS NOT NULL THEN
 	      _strength = _plur;
@@ -19,7 +24,6 @@ BEGIN
 
     --    RAISE NOTICE 'um, insertingx';
 
-    INSERT INTO ratingHistory (red,blue,strength) VALUES (_red,_blue,_strength);
 	BEGIN
 		INSERT INTO connections (red,blue,strength) VALUES (_red,_blue,_strength);
 	EXCEPTION
