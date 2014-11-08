@@ -19,6 +19,7 @@ BEGIN
 
     --    RAISE NOTICE 'um, insertingx';
 
+    INSERT INTO ratingHistory (red,blue,strength) VALUES (_red,_blue,_strength);
 	BEGIN
 		INSERT INTO connections (red,blue,strength) VALUES (_red,_blue,_strength);
 	EXCEPTION
