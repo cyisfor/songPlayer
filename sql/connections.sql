@@ -11,9 +11,11 @@ CREATE OR REPLACE FUNCTION connectionstrength(_red bigint, _blue bigint, _streng
 DECLARE
        _plur double precision;
 BEGIN
-    -- this shouldn't commit until the (unexcepted) end of function...
-    INSERT INTO ratingHistory (red,blue,strength) VALUES (_red,_blue,_strength);
-	
+    IF _red != 1 THEN -- derp
+        -- this shouldn't commit until the (unexcepted) end of function...
+        INSERT INTO ratingHistory (red,blue,strength) VALUES (_red,_blue,_strength);
+    END IF;
+
     IF _incrementally THEN
 	   SELECT (strength + _strength) INTO _plur FROM connections WHERE red = _red AND blue = _blue;
 	   IF _plur IS NOT NULL THEN

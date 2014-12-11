@@ -13,7 +13,7 @@
 
 #include <limits.h>
 #include <stdlib.h>
-
+#include <stdbool.h>
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #define STRCMP(a,b,l) (strcasestr(a,b)==NULL ? 1 : 0)
@@ -120,13 +120,33 @@ char* findRecording(const char* song, const char* recorded, const char* artist, 
     return id;
 }
 
+bool checkPath(const char* path) {
+    const char* values[1] = { path };
+    int lengths[1] = { strlen(path) };
+    int fmt[1] = {0};
+    PGresult* r = logExecPrepared(PQconn,"checkPath",
+                                 1,
+                                 values,lengths,fmt,0);
+    if(PQresultStatus(r)==PGRES_TUPLES_OK) {
+        if(PQntuples(r) == 1) {
+            PQclear(r);
+            return true;
+        }
+    }
+    PQclear(r);
+    return false;
+}
+
 int main(void) {
+    srandom(time(NULL));
     PQinit();
     preparation_t queries[] = {
         { "emptyHashes",
           "SELECT id,path FROM recordings WHERE hash IS NULL LIMIT 5"},
         { "setHash",
           "UPDATE recordings SET hash = $2 WHERE id = $1"},
+        { "checkPath",
+            "SELECT id FROM recordings WHERE path = $1" },
         { "findRecording",
           "SELECT selinsThingRecordings($1)"},
         { "updateRecording",
@@ -161,6 +181,7 @@ int main(void) {
             relpath[len-1] = '\0';
         realpath(relpath,path);
         printf("real path %s\n",path);
+        if(checkPath(path)) continue;
         char* name = strrchr(path,'/');
         if(name) {
             char* dot = strrchr(path,'.');
@@ -190,7 +211,6 @@ int main(void) {
             if(eqs==NULL) continue;
             *eqs = '\0';
             ++eqs; // the space
-            fprintf(stderr,"Derp %s '%s'\n",line,eqs+1);
             if(0==STRCMP(line,"title",len))
                 title = strdup(eqs+1);
             else if(0==STRCMP(line,"artist",len))
@@ -242,21 +262,23 @@ int main(void) {
 
         char* recorded = NULL;
         if(gotDate) {
-            recorded = malloc(0x40); // bleh
-            assert(strftime(recorded,23,"%Y-%m-%d %H:%M:%S",&date)>0);
+            char* template = alloca(0x26); // bleh
+            assert(strftime(template,23,"%Y-%m-%d %H:%M:%S",&date)>0);
+            strcat(template,".%d");
+            recorded = alloca(0x40);
+            snprintf(recorded,0x40,template,random());
+            printf("got date %s\n",recorded);
             // these are the ends you bring me to postgresql!
         }
         char* recording = findRecording(songid,recorded,artistid,path);
         assert(recording);
         free(songid);
         free(artistid);
-        free(recorded);
         printf("Recording %s\n",recording);
         setWhat("setPath",path,recording);
         if(albumid)
             setWhat("setAlbum",albumid,recording);
         free(albumid);
-        free(recording);
 
         PQcommit();
 
