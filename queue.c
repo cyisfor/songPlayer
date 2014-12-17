@@ -49,62 +49,63 @@ static PGresult* pickBestRecording(void) {
   int rows,cols;
   char* end = NULL;
   PGresult* result, *result2;
-#ifdef MEAN
   double minScore;
   double maxScore;
-  uint32_t randVal;
   double pivotF;
   double pivot;
-#else /* MEDIAN */
+  
   uint64_t num;
-  uint32_t randVal;
   double pivotF;
-  int32_t pivot;
-#endif /* MEAN */
+  int32_t offsetpivot;
+  
   char buf[0x100];
-  int length;
-  const int fmt = 0;
+  char offbuf[0x100];
+  int lengths[2];
+  const int fmt[] = { 0, 0 };
   char* song;
  TRYAGAIN:
   result =
-    logExecPrepared(PQconn,"bestSongRange",
+    logExecPrepared(PQconn,"bestSongScoreRange",
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
-#ifdef MEAN
   PQassert(result,rows==1 && cols==2);
   minScore = strtod(PQgetvalue(result,0,0),&end);
   maxScore = strtod(PQgetvalue(result,0,1),&end);
-#else /* MEDIAN */
-  PQassert(result,rows==1 && cols==1);
-  num = strtol(PQgetvalue(result,0,0),&end,10);
-#endif /* MEAN */
+  
   PQclear(result);
 
   double randF = drand48();
   assert(randF >= 0 && randF <= 1);
 
-#ifdef MEAN
   pivotF = offsetCurve(randF);
   assert(pivotF >= 0 && pivotF <= 1);
   pivot = (maxScore - minScore) * pivotF + minScore;
+  g_message("rand goes %lf to %lf %lf",randF,pivotF,pivot);
 
-  int tries = 0;
-  for(;;) {
-    length = snprintf(buf,0x100,"%f",pivot);
+  { 
+      lengths[0] = snprintf(buf,0x100,"%f",pivot);
+      const char* values[] = { buf };
+      result =
+        logExecPrepared(PQconn,"bestSongRange",
+                       1,&buf,&length,&fmt,0);
+  }
+  rows = PQntuples(result);
+  cols = PQnfields(result);
+  PQassert(result,rows==1 && cols==1);
+  num = strtol(PQgetvalue(result,0,0),&end,10);
+  
+  PQclear(result);
 
-    g_message("rand goes %lf to %lf",randF,pivotF);
-    g_message("pivot offset is between %lf:%lf is %f",minScore,maxScore,pivot);
-#else /* MEDIAN */
+  randF = drand48();
   pivotF = offsetCurve(randF);
-  pivot = num * pivotF;
+  offsetpivot = num * pivotF;
+  g_message("median rand goes %lf to %lf %d",randF,pivotF,offsetpivot);
 
-  int tries = 0;
-  for(;;) {
-    length = snprintf(buf,0x100,"%d",pivot);
+  length = snprintf(offbuf,0x100,"%d",offsetpivot);
 
-    g_message("rand goes %lf to %lf",randF,pivotF);
-    g_message("pivot offset is between 0:%lu is %d",num,pivot);
+    g_message("mean pivot is between %lf:%lf is %f",minScore,maxScore,pivot);
+    g_message("median offset is between 0:%lu is %d",num,pivot);
 #endif /* MEAN */
 
     { const char* values[] = { buf };
@@ -301,28 +302,21 @@ static void* queueChecker(void* arg) {
       "DELETE FROM ratings"},
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
+#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems)) AND score >= $1"
+
+    { "bestSongScoreRange",
+      "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG },
     { "bestSongRange",
-#ifdef MEAN
-      "SELECT MIN(ratings.score),MAX(ratings.score) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))" },
+      "SELECT COUNT(songs.id) " FROM_BEST_SONG },
     { "bestSong",
-        "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) AND score >= $1 ORDER BY score,random() LIMIT 1" },
-    { "bestRecordingRange",
-      "SELECT MIN(ratings.score),MAX(ratings.score) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
+        "SELECT songs.id,songs.title " FROM_BEST_SONG " ORDER BY score,random() OFFSET $2 LIMIT 1" },
+#define FROM_BEST_RECORDING "FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1"
+    { "bestRecordingScoreRange",
+      "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
     { "bestRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 AND score >= $2 ORDER BY score LIMIT 1" },
+      "SELECT recordings.id " FROM_BEST_RECORDING " AND score >= $2 ORDER BY score LIMIT 1" },
     { "aRecording",
       "SELECT recordings.id FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1"},
-#else /* MEDIAN */
-      "SELECT COUNT(songs.id) FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))" },
-    { "bestSong",
-      "SELECT songs.id,songs.title FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue)) ORDER BY score,random() DESC OFFSET $1 LIMIT 1" },
-    { "bestRecordingRange",
-      "SELECT COUNT(recordings.id) FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1" },
-    { "bestRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC OFFSET $2 LIMIT 1" },
-    { "aRecording",
-      "SELECT recordings.id FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE song = $1 ORDER BY score DESC LIMIT 1" },
-#endif /* MEAN */
     { "insertIntoQueue",
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",

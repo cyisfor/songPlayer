@@ -87,11 +87,11 @@ print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
   }
 }
 
-guint error_limit_amount = 0;
-const guint error_limit_max = 100; 
+const guint error_limit_max = 10; 
 const guint error_limit_interval = 1000;
-// no more than 100 error messages in 1 second
+// no more than 10 error messages in 1 second
 
+guint error_limit_amount = 0;
 guint error_limit_id = 0;
 
 static gboolean reset_error_limit(gpointer udata) {
@@ -127,15 +127,16 @@ bus_call (GstBus     *bus,
     gst_message_parse_error (msg, &error, &debug);
 
     g_printerr ("\nError: %s\n%s\n---------------\n", error->message, debug);
-    g_free (debug);
-    g_error_free (error);
     if(++error_limit_amount > error_limit_max) {
+        kill(getpid(),SIGSTOP); // for gdb
         g_main_loop_quit(loop);
     } else {
         if(error_limit_id == 0) {
             error_limit_id = g_timeout_add(error_limit_interval,reset_error_limit,NULL);
         }
     }
+    g_free (debug);
+    g_error_free (error);
     break;
   }
 
