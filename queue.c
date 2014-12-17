@@ -30,20 +30,9 @@ void* myPQtest = NULL;
    If you chose by the median (number of songs) then when you rate a song down
    it won't affect the frequency songs you like more being played.
 
-
-   I dunno! Going w/ mean.
-==========
- Choose according to the number of songs, not the score range.
-   If you chose by the mean (least to greatest score) then when you rate
-   a song down least, it will decrease the frequency that songs you like are
-   played. So like -1,2,2,2,2,10,10 the top 2 will play a lot more than with
-   -1000,2,2,2,2,10,10 in which case the top 6 will get about equal treatment.
-
-   If you chose by the median (number of songs) then when you rate a song down
-   it won't affect the frequency songs you like more being played.
+   So... choose by the mean, for a cutoff point below which songs don't get picked
+   then choose by the median above that cutoff point!
 */
-
-#undef MEAN
 
 static PGresult* pickBestRecording(void) {
   int rows,cols;
@@ -55,7 +44,6 @@ static PGresult* pickBestRecording(void) {
   double pivot;
   
   uint64_t num;
-  double pivotF;
   int32_t offsetpivot;
   
   char buf[0x100];
@@ -89,7 +77,7 @@ static PGresult* pickBestRecording(void) {
       const char* values[] = { buf };
       result =
         logExecPrepared(PQconn,"bestSongRange",
-                       1,&buf,lengths,fmt,0);
+                       1,values,lengths,fmt,0);
   }
   rows = PQntuples(result);
   cols = PQnfields(result);
@@ -124,7 +112,7 @@ static PGresult* pickBestRecording(void) {
   { const char* values[] = { song };
     result2 =
       logExecPrepared(PQconn,"bestRecordingScoreRange",
-                     1,values,&length,&fmt,0);
+                     1,values,lengths,fmt,0);
   }
   rows = PQntuples(result2);
   cols = PQnfields(result2);
@@ -138,20 +126,20 @@ static PGresult* pickBestRecording(void) {
   pivotF = offsetCurve(randF);
   pivot = (maxScore - minScore) * pivotF + minScore;
 
+  g_message("recordings for %s min %lf max %lf pivot %lf (%lf)",song,minScore,maxScore,pivot,pivotF);
+
   {
-    const char* parameters[2] = { song, buf };
-    int lengths[2] = { lengths[0], snprintf(buf,0x100,"%f",pivot) };
-    const int formats[2] = { 0, 0 };
+    lengths[1] = snprintf(buf,0x100,"%f",pivot);
+    const char* values[2] = { song, buf };
 
     result2 =
       logExecPrepared(PQconn,"bestRecording",
-                     2,parameters,lengths,formats,0);
+                     2,values,lengths,fmt,0);
   }
 
   rows = PQntuples(result2);
   if(rows==0) {
       g_error("Song %s has no recordings!\n",song);
-#endif /* MEAN */
   }
   cols = PQnfields(result2);
   PQclear(result);
@@ -179,19 +167,9 @@ TRYAGAIN:
       PQclear(result);
       goto TRYAGAIN;
   }
-#ifdef MEAN
-
   int rows = PQntuples(result);
   int cols = PQnfields(result);
   PQassert(result,rows==1 && cols==1);
-
-#else /* MEDIAN */
-
-  int rows = PQntuples(result);
-  int cols = PQnfields(result);
-  PQassert(result,rows==1 && cols==1);
-
-#endif /* MEAN */
 
   g_message("Making sure exists");
   { const char* parameters[] = { PQgetvalue(result,0,0), "path not found" };
@@ -269,19 +247,20 @@ static void* queueChecker(void* arg) {
       "DELETE FROM ratings"},
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
-#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems)) AND score >= $1"
+#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))"
 
     { "bestSongScoreRange",
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG },
+#define FROM_BEST_SONG_SCORE FROM_BEST_SONG " AND score >= $1 OR (score IS NULL AND $1 = 0.0)"
     { "bestSongRange",
-      "SELECT COUNT(songs.id) " FROM_BEST_SONG },
+      "SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE },
     { "bestSong",
-        "SELECT songs.id,songs.title " FROM_BEST_SONG " ORDER BY score,random() OFFSET $2 LIMIT 1" },
+        "SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET $2 LIMIT 1" },
 #define FROM_BEST_RECORDING "FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1"
     { "bestRecordingScoreRange",
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
     { "bestRecording",
-      "SELECT recordings.id " FROM_BEST_RECORDING " AND score >= $2 ORDER BY score LIMIT 1" },
+      "SELECT recordings.id " FROM_BEST_RECORDING " AND score >= $2 OR (score IS NULL AND $2 = 0.0) ORDER BY score LIMIT 1" },
     { "insertIntoQueue",
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",
