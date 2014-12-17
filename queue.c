@@ -81,14 +81,15 @@ static PGresult* pickBestRecording(void) {
   pivotF = offsetCurve(randF);
   assert(pivotF >= 0 && pivotF <= 1);
   pivot = (maxScore - minScore) * pivotF + minScore;
-  g_message("rand goes %lf to %lf %lf",randF,pivotF,pivot);
+  g_message("mean pivot is between %lf:%lf is %f",minScore,maxScore,pivot);
+  g_message("rand goes %lf to %lf %lf",randF,pivotF);
 
   { 
       lengths[0] = snprintf(buf,0x100,"%f",pivot);
       const char* values[] = { buf };
       result =
         logExecPrepared(PQconn,"bestSongRange",
-                       1,&buf,&length,&fmt,0);
+                       1,&buf,lengths,fmt,0);
   }
   rows = PQntuples(result);
   cols = PQnfields(result);
@@ -100,85 +101,51 @@ static PGresult* pickBestRecording(void) {
   randF = drand48();
   pivotF = offsetCurve(randF);
   offsetpivot = num * pivotF;
-  g_message("median rand goes %lf to %lf %d",randF,pivotF,offsetpivot);
+  g_message("median offset is between 0:%lu is %d",num,offsetpivot);
+  g_message("median rand goes %lf to %lf %d",randF,pivotF);
 
-  length = snprintf(offbuf,0x100,"%d",offsetpivot);
+  lengths[1] = snprintf(offbuf,0x100,"%d",offsetpivot);
 
-    g_message("mean pivot is between %lf:%lf is %f",minScore,maxScore,pivot);
-    g_message("median offset is between 0:%lu is %d",num,pivot);
-#endif /* MEAN */
-
-    { const char* values[] = { buf };
+  { const char* values[] = { buf, offbuf };
       result =
-        logExecPrepared(PQconn,"bestSong",
-                     1,values,&length,&fmt,0);
-    }
-    rows = PQntuples(result);
-    break;
+          logExecPrepared(PQconn,"bestSong",
+                  2,values,lengths,fmt,0);
   }
+  rows = PQntuples(result);
   cols = PQnfields(result);
   PQassert(result,rows>=1 && cols==2);
 
   // note: this is a serialized integer, not a title or path.
   song = PQgetvalue(result,0,0);
+  lengths[0] = PQgetlength(result,0,0);
   g_message("Best song: %s %s",song,PQgetvalue(result,0,1));
 
-#ifdef MEAN
-#else /* MEDIAN */
-  length = strlen(song);
 
-#endif /* MEAN */
   { const char* values[] = { song };
     result2 =
-      logExecPrepared(PQconn,"bestRecordingRange",
+      logExecPrepared(PQconn,"bestRecordingScoreRange",
                      1,values,&length,&fmt,0);
   }
   rows = PQntuples(result2);
   cols = PQnfields(result2);
-#ifdef MEAN
   PQassert(result2,rows==1 && cols==2);
   minScore = strtod(PQgetvalue(result2,0,0),&end);
   maxScore = strtod(PQgetvalue(result2,0,1),&end);
-#else /* MEDIAN */
-  PQassert(result2,rows==1 && cols==1);
-  num = strtol(PQgetvalue(result2,0,0),&end,10);
-#endif /* MEAN */
   PQclear(result2);
 
   randF = drand48();
 
   pivotF = offsetCurve(randF);
-#ifdef MEAN
   pivot = (maxScore - minScore) * pivotF + minScore;
 
   {
     const char* parameters[2] = { song, buf };
-    int lengths[2] = { length, snprintf(buf,0x100,"%f",pivot) };
-#else /* MEDIAN */
-  pivot = num * pivotF;
-
-  {
-    const char* parameters[2] = { song, buf };
-    int lengths[2] = { length, snprintf(buf,0x100,"%d",pivot) };
-#endif /* MEAN */
+    int lengths[2] = { lengths[0], snprintf(buf,0x100,"%f",pivot) };
     const int formats[2] = { 0, 0 };
 
     result2 =
       logExecPrepared(PQconn,"bestRecording",
                      2,parameters,lengths,formats,0);
-#ifdef MEAN
-
-  rows = PQntuples(result2);
-  if(rows==0) {
-      PQclear(result2);
-      logExecPrepared(PQconn,"aRecording",
-                     1,parameters,lengths,formats,0);
-
-      rows = PQntuples(result2);
-      if(rows==0)
-          g_error("Song %s has no recordings!\n",song);
-  }
-#else /* MEDIAN */
   }
 
   rows = PQntuples(result2);
@@ -228,7 +195,7 @@ TRYAGAIN:
 
   g_message("Making sure exists");
   { const char* parameters[] = { PQgetvalue(result,0,0), "path not found" };
-      int len[] = { strlen(parameters[0]), sizeof("path not found") };
+      int len[] = { PQgetlength(result,0,0), sizeof("path not found") };
       const int fmt[] = { 0, 0 };
       struct stat buf;
       PGresult* exists = logExecPrepared(PQconn,"getPath",
@@ -315,8 +282,6 @@ static void* queueChecker(void* arg) {
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
     { "bestRecording",
       "SELECT recordings.id " FROM_BEST_RECORDING " AND score >= $2 ORDER BY score LIMIT 1" },
-    { "aRecording",
-      "SELECT recordings.id FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1"},
     { "insertIntoQueue",
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",
