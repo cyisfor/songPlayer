@@ -1,7 +1,7 @@
 #include "pq.h"
 #include "preparation.h"
 
-extern const char* gladeFile;
+extern const char gladeFile[];
 extern long unsigned int gladeFileSize;
 
 #include <gtk/gtk.h>
@@ -72,9 +72,10 @@ int main(void) {
         { "rate",
             "SELECT connectionStrength((select id from mode),$2,$1)" },
         { "getpage",
-            "select rating,title,id from connections inner join songs on connections.blue = songs.id where red = (select id from mode) order by strength desc OFFSET $1 LIMIT $2;" }
+            "select strength,title,songs.id from connections inner join songs on connections.blue = songs.id where red = (select id from mode) order by strength desc OFFSET $1 LIMIT $2;" }
     };
     PQinit();
+    gtk_init(NULL,NULL);
     prepareQueries(queries);
 
     GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
