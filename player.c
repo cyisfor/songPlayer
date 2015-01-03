@@ -97,12 +97,20 @@ guint error_limit_id = 0;
 static gboolean reset_error_limit(gpointer udata) {
     if(error_limit_amount < error_limit_max) {
         error_limit_amount = 0;
+        error_limit_id = 0;
+        return G_SOURCE_REMOVE;
     } else {
         error_limit_amount -= error_limit_max;
     }
     return G_SOURCE_CONTINUE;
 }
 
+GstElement* pipeline = NULL;
+
+static gboolean play_later(gpointer udata) {
+    gst_element_set_state (pipeline, GST_STATE_NULL);
+    return G_SOURCE_REMOVE;
+}
 
 static gboolean
 bus_call (GstBus     *bus,
@@ -127,8 +135,12 @@ bus_call (GstBus     *bus,
     gst_message_parse_error (msg, &error, &debug);
 
     g_printerr ("\nError: %s\n%s\n---------------\n", error->message, debug);
+    if(0==strcmp(error->message, "Could not open audio device for playback.")) {
+        kill(getpid(),SIGTSTP); // for gdb
+        g_timeout_add(1000,play_later,NULL);
+    }
+
     if(++error_limit_amount > error_limit_max) {
-        kill(getpid(),SIGSTOP); // for gdb
         g_main_loop_quit(loop);
     } else {
         if(error_limit_id == 0) {
@@ -195,7 +207,6 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement * sinkElement)
 }
 
 GstElement* src = NULL;
-GstElement* pipeline = NULL;
 GstBus* bus = NULL;
 
 static int nextSong(const char* next) {

@@ -251,7 +251,7 @@ static void* queueChecker(void* arg) {
 
     { "bestSongScoreRange",
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG },
-#define FROM_BEST_SONG_SCORE FROM_BEST_SONG " AND score >= $1 OR (score IS NULL AND $1 = 0.0)"
+#define FROM_BEST_SONG_SCORE FROM_BEST_SONG " AND (score >= $1 OR (score IS NULL AND $1 = 0.0))"
     { "bestSongRange",
       "SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE },
     { "bestSong",
@@ -260,7 +260,7 @@ static void* queueChecker(void* arg) {
     { "bestRecordingScoreRange",
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
     { "bestRecording",
-      "SELECT recordings.id " FROM_BEST_RECORDING " AND score >= $2 OR (score IS NULL AND $2 = 0.0) ORDER BY score LIMIT 1" },
+      "SELECT recordings.id " FROM_BEST_RECORDING " AND (score >= $2 OR (score IS NULL AND $2 = 0.0)) ORDER BY score LIMIT 1" },
     { "insertIntoQueue",
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",
