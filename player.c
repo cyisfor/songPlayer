@@ -107,10 +107,12 @@ static gboolean reset_error_limit(gpointer udata) {
 
 GstElement* pipeline = NULL;
 
-static gboolean play_later(gpointer udata) {
-    gst_element_set_state (pipeline, GST_STATE_NULL);
-    return G_SOURCE_REMOVE;
+static gboolean playLater(gpointer udata) {
+  playerPlay();
+  return G_SOURCE_REMOVE;
 }
+
+char** arguments = NULL;
 
 static gboolean
 bus_call (GstBus     *bus,
@@ -125,7 +127,7 @@ bus_call (GstBus     *bus,
     tagHack = NULL;
     write(STDOUT_FILENO,".",1);
     selectDone();
-    playerPlay();
+    g_timeout_add(60*1000+random()%10000,playLater,NULL);
     break;
 
   case GST_MESSAGE_ERROR: {
@@ -136,8 +138,17 @@ bus_call (GstBus     *bus,
 
     g_printerr ("\nError: %s\n%s\n---------------\n", error->message, debug);
     if(0==strcmp(error->message, "Could not open audio device for playback.")) {
-        kill(getpid(),SIGTSTP); // for gdb
-        g_timeout_add(1000,play_later,NULL);
+      //kill(getpid(),SIGTSTP); // for gdb
+      // this doesn't work for SOME reason
+      //g_timeout_add(1000,play_later,NULL);
+      // this is a bit extreme but... at least it works?
+      char buf[1024];
+      ssize_t len;
+      if((len = readlink("/proc/self/exe",buf,sizeof(buf)-1)) < 0)
+	abort();
+      buf[len] = '\0';
+      execv(buf,arguments);
+      exit(23);
     }
 
     if(++error_limit_amount > error_limit_max) {
@@ -371,6 +382,8 @@ static void restartPlayer(int signal) {
 
 int main (int argc, char ** argv)
 {
+  srandom(time(NULL));
+  arguments = argv;
   signalsSetup();
   gst_init (NULL,NULL);
   configInit();
