@@ -2,7 +2,7 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done ratebytitle
+	testadjust testqueue done ratebytitle ratebyalbum
 
 all:: make/config.mk build
 

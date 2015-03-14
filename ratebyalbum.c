@@ -16,7 +16,7 @@ int main(void) {
   const int lengths[] = { strlen(rating) };
   const int fmt[] = { 0 };
   PQclear(PQexecParams(PQconn,"SELECT connectionStrength(id, \
-(SELECT song FROM recordings WHERE album = (SELECT album from queue inner join recordings on queue.recording = recordings.id where queue.id = (select min(id) from queue))), \
+(SELECT album FROM recordings WHERE id = (SELECT recording from queue where id = (select min(id) from queue))), \
 $1) FROM mode",
                        1,NULL,values,lengths,fmt,0));
 
