@@ -33,7 +33,7 @@ int main (int argc, char ** argv)
       } else for(;i<PQnfields(result);++i) {
           fputs(PQfname(result,i),stdout);
           fputs(": ",stdout);
-          if(i==30000) {
+          if(i==3) {
               unsigned long duration = atol(PQgetvalue(result,0,i)) / 1000000000;          
               if(duration > 60) {
                   int seconds = duration % 60;

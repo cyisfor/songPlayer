@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <errno.h>
+#include <error.h>
 
 #define WRITE(fd,s) write(fd,s,sizeof(s)-1)
 
@@ -58,11 +60,28 @@ static void updateLink(void* udata) {
     PQcheckClear(result);
     return;
   }
+
+  PGresult* result2 =
+    logExecPrepared(PQconn,"getHistory",
+                    0,NULL,NULL,NULL,0);
   
   const char destpath[] = "../index.html.temp";
   int dest = open(destpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
   assert(dest != -1);
-  WRITE(dest,"<!DOCTYPE html>\n<html><head>\n"
+  WRITE(dest,"<!DOCTYPE html>\n<html><head>\n");
+  WRITE(dest,"<meta http-equiv=\"refresh\" content=\"");
+
+  long duration = atol(PQgetvalue(result,0,4)) / 1000000000;
+  struct tm last;
+  strptime(PQgetvalue(result2,0,2),"%Y-%m-%d %H:%M:%S",&last);
+  // elapsed is now - last
+  // left = duration - elapsed
+  long left = duration + mktime(&last) - time(NULL); 
+  char refresh[0x10];
+  write(dest,refresh,snprintf(refresh,0x10,"%u",left + 2));
+  WRITE(dest,"\"/>");
+           
+  WRITE(dest,
         "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"
         "<title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"cache/");  
   ssize_t len = 0;  
@@ -93,22 +112,25 @@ static void updateLink(void* udata) {
   PQcheckClear(result);
   WRITE(dest,"</table>");
   
-  result = logExecPrepared(PQconn,"getHistory",
-                           0,NULL,NULL,NULL,0);
+  result = result2;
   int rows = PQntuples(result);
   if(rows > 0) {
-    WRITE(dest,"<div>Last-played:<ul>\n");
+    WRITE(dest,"<div>Last-played:<table id=\"played\">\n");
     for(i=0;i<rows;++i) {
-      WRITE(dest,"  <li><a href=\"cache/");
+      WRITE(dest,"  <tr");
+      if(i%2==1) {
+        WRITE(dest," class=\"o\"");
+      }
+      WRITE(dest,"><td><a href=\"cache/");
       basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
       write(dest,basename,len);
       WRITE(dest,"\">");
       write(dest,PQgetvalue(result,i,1),PQgetlength(result,i,1));
-      WRITE(dest,"</a> ");
+      WRITE(dest,"</a></td><td>");
       write(dest,PQgetvalue(result,i,2),PQgetlength(result,i,2));
-      WRITE(dest,"</li>\n");
+      WRITE(dest,"</td></tr>\n");
     }
-    WRITE(dest,"</ul></div>\n");
+    WRITE(dest,"</table></div>\n");
   }
 
   result = logExecPrepared(PQconn,"upcomingSongs",
@@ -117,7 +139,11 @@ static void updateLink(void* udata) {
   if(rows > 0) {
     WRITE(dest,"<div>Upcoming:<ul>\n");
     for(i=0;i<rows;++i) {
-      WRITE(dest,"  <li><a href=\"cache/");
+      WRITE(dest,"  <li");
+      /*if(i%2==1) {
+        WRITE(dest," class=\"o\"");
+        }*/
+      WRITE(dest,"><a href=\"cache/");
       basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
       write(dest,basename,len);
       WRITE(dest,"\">");
@@ -130,8 +156,13 @@ static void updateLink(void* udata) {
   PQcheckClear(result);
   WRITE(dest,"</body></html>\n");
 
+  link("../index.html","../index.save");
   unlink("../index.html");
-  rename(destpath,"../index.html");
+  if(0!=rename(destpath,"../index.html")) {
+    link("../index.save","../index.html");
+    unlink("../index.save");
+    error(5,errno,"rename fail?");
+  }
   close(dest);
 }
 
