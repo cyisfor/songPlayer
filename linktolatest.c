@@ -41,10 +41,12 @@ static void updateLink(void* udata) {
     return;
   }
   
-  char destpath[] = "latest.html.XXXXXX";
-  int dest = mkstemp(destpath);
+  const char destpath[] = "../index.html.temp";
+  int dest = open(destpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
   assert(dest != -1);
-  WRITE(dest,"<!DOCTYPE html>\n<html><head><title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"");  
+  WRITE(dest,"<!DOCTYPE html>\n<html><head>\n"
+        "<link src=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"
+        "<title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"cache/");  
   ssize_t len = 0;  
   const char* basename = linkhere(PQgetvalue(result,0,0),PQgetlength(result,0,0,),&len);
   
@@ -53,7 +55,20 @@ static void updateLink(void* udata) {
   write(dest,PQgetvalue(result,0,1),PQgetlength(result,0,1));
   PQcheckClear(result);
   WRITE(dest,"</a></p>\n");
-
+  WRITE(dest,"<dl id=\"info\">");
+  int cols = PQnfields(result);
+  for(i=2;i<cols;++i) {
+    WRITE(dest,"  <dt>");
+    const char* name = PQfname(result,i);
+    write(dest,name,strlen(name));
+    WRITE(dest,"</dt><dd>");
+    if(!PQisnull(result,0,i)) {
+      write(dest,PQgetvalue(result,0,i),PQgetlength(result,0,i));
+    }
+    WRITE(dest,"</dd>\n");
+  }
+  WRITE(dest,"</dl>");
+    
   result = logExecPrepared(PQconn,"getHistory",
                            0,NULL,NULL,NULL,0);
   int i,rows=PQntuples(result);
@@ -61,7 +76,7 @@ static void updateLink(void* udata) {
   } else {
     WRITE(dest,"<p>Last-played:<ul>");
     for(i=0;i<rows;++i) {
-      WRITE(dest,"  <li><a href=\"");
+      WRITE(dest,"  <li><a href=\"cache/");
       basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
       write(dest,basename,len);
       WRITE(dest,"\">");
@@ -75,37 +90,34 @@ static void updateLink(void* udata) {
   PQcheckClear(result);
   WRITE(dest,"</body></html>\n");
 
-  fchmod(dest,0644);
-  unlink("index.html");
-  rename(destpath,"latest.html");
+  unlink("../index.html");
+  rename(destpath,"../index.html");
   close(dest);
 }
 
 int main(void) {
   preparation_t query[] = {
     {
-    "getTopSongPath",
-    "SELECT recordings.path,songs.title,artists.name as artist,albums.title as album,recordings.duration,"
-    "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
-    "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
-    "songs.played "
-    "FROM queue "
-    "INNER JOIN recordings ON recordings.id = queue.recording "
-    "INNER JOIN songs ON recordings.song = songs.id "
-    "LEFT OUTER JOIN albums ON recordings.album = albums.id "
-    "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-    "ORDER BY queue.id ASC"},
-    {
-      "getHistory",
+      "getTopSongPath",
       "SELECT recordings.path,songs.title,artists.name as artist,albums.title as album,recordings.duration,"
       "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
       "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
       "songs.played "
+      "FROM queue "
+      "INNER JOIN recordings ON recordings.id = queue.recording "
+      "INNER JOIN songs ON recordings.song = songs.id "
+      "LEFT OUTER JOIN albums ON recordings.album = albums.id "
+      "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+      "ORDER BY queue.id ASC"},
+    {
+      "getHistory",
+      "SELECT recordings.path,songs.title,history.played "
       "FROM history "
-    "INNER JOIN recordings ON recordings.id = history.recording "
-    "INNER JOIN songs ON recordings.song = songs.id "
-    "LEFT OUTER JOIN albums ON recordings.album = albums.id "
-    "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+      "INNER JOIN recordings ON recordings.id = history.recording "
+      "INNER JOIN songs ON recordings.song = songs.id "
+      "LEFT OUTER JOIN albums ON recordings.album = albums.id "
+      "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+      "ORDER BY played desc LIMIT 16"
     }
   };
   PQinit();
@@ -113,7 +125,8 @@ int main(void) {
   prepareQueries(query);
 
   mkdir("/opt/lighttpd/www/stuff/nowplaying",0755);
-  chdir("/opt/lighttpd/www/stuff/nowplaying");
+  mkdir("/opt/lighttpd/www/stuff/nowplaying/cache",0755);
+  chdir("/opt/lighttpd/www/stuff/nowplaying/cache");
   updateLink(NULL);
   onNext(updateLink,NULL);
   exit(23);
