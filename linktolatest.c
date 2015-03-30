@@ -33,6 +33,23 @@ static const char* linkhere(const char* path, ssize_t pathlen, ssize_t* len) {
   return basename;
 }
 
+char* durationFormat(const char* value, ssize_t* len) {
+  static char buf[0x100];
+  unsigned long duration = atol(value) / 1000000000;          
+  if(duration > 60) {
+    int seconds = duration % 60;
+    int moff = snprintf(buf, 0x100, "%um",duration / 60);
+    if(seconds) {
+      *len = moff + snprintf(buf+moff,0x100-moff," %us",seconds);
+    } else {
+      *len = moff;
+    }
+  } else {
+    *len = snprintf(buf,0x100,"%us",duration);
+  }
+  return buf;
+}
+
 static void updateLink(void* udata) {
   PGresult* result =
     logExecPrepared(PQconn,"getTopSongPath",
@@ -59,24 +76,28 @@ static void updateLink(void* udata) {
   int i;
   int cols = PQnfields(result);
   for(i=2;i<cols;++i) {
-    WRITE(dest,"  <td>");
+    WRITE(dest,"  <tr><th>");
     const char* name = PQfname(result,i);
     write(dest,name,strlen(name));
-    WRITE(dest,"</td><td>");
-    if(!PQgetisnull(result,0,i)) {
-      write(dest,PQgetvalue(result,0,i),PQgetlength(result,0,i));
+    WRITE(dest,"</th><td>");
+    if(i==4) {
+      const char* value = durationFormat(PQgetvalue(result,0,i),&len);
+      write(dest,value,len);
+    } else {
+      if(!PQgetisnull(result,0,i)) {
+        write(dest,PQgetvalue(result,0,i),PQgetlength(result,0,i));
+      }
     }
-    WRITE(dest,"</td>\n");
+    WRITE(dest,"</td></tr>\n");
   }
   PQcheckClear(result);
   WRITE(dest,"</table>");
-    
+  
   result = logExecPrepared(PQconn,"getHistory",
                            0,NULL,NULL,NULL,0);
   int rows = PQntuples(result);
-  if(rows==0) {
-  } else {
-    WRITE(dest,"<p>Last-played:<ul>");
+  if(rows > 0) {
+    WRITE(dest,"<div>Last-played:<ul>\n");
     for(i=0;i<rows;++i) {
       WRITE(dest,"  <li><a href=\"cache/");
       basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
@@ -87,8 +108,25 @@ static void updateLink(void* udata) {
       write(dest,PQgetvalue(result,i,2),PQgetlength(result,i,2));
       WRITE(dest,"</li>\n");
     }
-    WRITE(dest,"</ul></p>\n");
+    WRITE(dest,"</ul></div>\n");
   }
+
+  result = logExecPrepared(PQconn,"upcomingSongs",
+                           0,NULL,NULL,NULL,0);
+  rows = PQntuples(result);
+  if(rows > 0) {
+    WRITE(dest,"<div>Upcoming:<ul>\n");
+    for(i=0;i<rows;++i) {
+      WRITE(dest,"  <li><a href=\"cache/");
+      basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
+      write(dest,basename,len);
+      WRITE(dest,"\">");
+      write(dest,PQgetvalue(result,i,1),PQgetlength(result,i,1));
+      WRITE(dest,"</a></li>\n");
+    }
+    WRITE(dest,"</ul></div>\n");
+  }
+  
   PQcheckClear(result);
   WRITE(dest,"</body></html>\n");
 
@@ -101,16 +139,22 @@ int main(void) {
   preparation_t query[] = {
     {
       "getTopSongPath",
-      "SELECT recordings.path,songs.title,artists.name as artist,albums.title as album,recordings.duration,"
+      "SELECT recordings.path,songs.title,artists.name as artist,albums.title as album, "
+      "recordings.duration,"
       "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
-      "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
-      "songs.played "
+      "songs.played AS \"last played\""
       "FROM queue "
       "INNER JOIN recordings ON recordings.id = queue.recording "
       "INNER JOIN songs ON recordings.song = songs.id "
       "LEFT OUTER JOIN albums ON recordings.album = albums.id "
       "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-      "ORDER BY queue.id ASC"},
+      "ORDER BY queue.id ASC LIMIT 1"},
+    { "upcomingSongs",
+      "SELECT recordings.path, songs.title "
+      "FROM queue "
+      "INNER JOIN recordings ON recordings.id = queue.recording "
+      "INNER JOIN songs ON recordings.song = songs.id "
+      "ORDER BY queue.id ASC OFFSET 1"},
     {
       "getHistory",
       "SELECT recordings.path,songs.title,history.played "
