@@ -1,11 +1,12 @@
 #include "pq.h"
-
 #include <uv.h>
+#include <stdlib.h>
+#include <assert.h>
 
 struct context {
   const char* name;
   void* udata;
-  void (*next)(void);
+  void (*next)(void*);
 };
 
 static void fakealloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
@@ -17,11 +18,17 @@ static void reopen(uv_tcp_t* tcp);
 
 static void getsome(uv_stream_t* stream, ssize_t nread, const uv_buf_t* nothing) {
   if(nread == UV_EOF) {
-    PQclose(PQconn);
+    //PQclose(PQconn);
     reopen((uv_tcp_t*) stream);
     return;
   }
-  assert(nread == UV_ENOBUFS);
+  if(nread == UV_EFAULT) {
+    return;
+  }
+  if(nread != UV_ENOBUFS) {
+    perror(uv_strerror(nread));
+    exit(23);
+  }
   
   PQconsumeInput(PQconn);
   
@@ -43,15 +50,15 @@ static void reopen(uv_tcp_t* tcp) {
   assert(sock>=0);
   assert(0==uv_tcp_init(uv_default_loop(), tcp));
   assert(0==uv_tcp_open(tcp, sock));  
-  uv_read_start(tcp, fakealloc, getsome);
+  uv_read_start((uv_stream_t*)tcp, fakealloc, getsome);
 }
 
 void onNext(void (*next)(void*), void* udata) {
   PQcheckClear(PQexec(PQconn,"LISTEN next"));
 
   uv_tcp_t* tcp = (uv_tcp_t*)
-    malloc(sizeof(struct uv_tcp_t) + sizeof(struct context));
-  struct context* ctx = tcp + sizeof(uv_tcp_t);
+    malloc(sizeof(uv_tcp_t) + sizeof(struct context));
+  struct context* ctx = (struct context*) ((void*)tcp) + sizeof(uv_tcp_t);
   tcp->data = ctx;    
   ctx->next = next;
   ctx->udata = udata;

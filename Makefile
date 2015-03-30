@@ -2,7 +2,7 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done ratebytitle ratebyalbum
+	testadjust testqueue done ratebytitle ratebyalbum linktolatest
 
 all:: make/config.mk build
 
@@ -10,7 +10,7 @@ build: $(PROGRAMS)
 
 include make/implicit.mk
 
-make/config.mk:
+make/config.mk: Makefile
 	echo -n CFLAGS:="-g " > $@.temp
 	libgcrypt-config --cflags | head -c -1 >>$@.temp
 	echo -n " "  >> $@.temp
@@ -20,6 +20,8 @@ make/config.mk:
 	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
 	mv $@.temp $@
+
+linktolatest: TARGETLIBS := -luv
 
 -include make/config.mk
 

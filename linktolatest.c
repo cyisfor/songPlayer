@@ -1,11 +1,18 @@
 #include "nextreactor.h"
 #include "pq.h"
+#include "preparation.h"
+
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
 
 struct context {
   char* lastname;
 };
 
-void updateLink(void* udata) {
+#define WRITE(fd,s) write(fd,s,sizeof(s))
+
+static void updateLink(void* udata) {
   struct context* ctx = (struct context*) udata;
   
   PGresult* result =
@@ -27,17 +34,17 @@ void updateLink(void* udata) {
   
   char destpath[] = "index.html.XXXXXX";
   int dest = mkstemp(destpath);
-  assert(dest != NULL);
+  assert(dest != -1);
   WRITE(dest,"<!DOCTYPE html>\n<html><head><title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"");
   write(dest,basename,strlen(basename));
   WRITE(dest,"\">");
   write(dest,PQgetvalue(result,0,1),PQgetlength(result,0,1));
-  PQclear(result);
+  PQcheckClear(result);
   WRITE(dest,"</a></p>\n</body></html>\n");
   fchmod(dest,0644);
   unlink("index.html");
   rename(destpath,"index.html");
-  fclose(dest);
+  close(dest);
 }
 
 int main(void) {
@@ -54,12 +61,14 @@ int main(void) {
     "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
     "ORDER BY queue.id ASC LIMIT 2"
   };
+  PQinit();
+  
   prepareQueries(&query);
 
   struct context ctx = {};
 
-  mkdir("/opt/lighttpd/stuff/nowplaying");
-  chdir("/opt/lighttpd/stuff/nowplaying") || exit(3);
+  mkdir("/opt/lighttpd/stuff/nowplaying",0755);
+  chdir("/opt/lighttpd/stuff/nowplaying");  
   onNext(updateLink,&ctx);
   exit(23);
 }
