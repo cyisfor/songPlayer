@@ -1,4 +1,5 @@
 #include "queue.h"
+#include <stdio.h>
 
 int main(void) {
   setupOffsetCurve(0.9);

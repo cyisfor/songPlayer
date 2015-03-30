@@ -1,10 +1,13 @@
 o/%.o: %.c
+	$(call status,COMPILE, $*)
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
 %.so:
+	$(call status,LIBRARY, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^)
 
 deps/%.d: %.c
+	$(call status, DEPS, $*)
 	echo -n o/ > $@.temp
 	$(CC) -MM $<  >> $@.temp
 	echo -n "$*: " >> $@.temp
@@ -13,4 +16,5 @@ deps/%.d: %.c
 	mv $@.temp $@ 
 
 $(PROGRAMS): %: o/%.o
+	$(call status, PROGRAM, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(TARGETLIBS) -o $@ $(filter %.o %.so,$^)
