@@ -4,6 +4,7 @@
 
 struct context {
   const char* name;
+  void* udata;
   void (*next)(void);
 };
 
@@ -31,7 +32,7 @@ static void getsome(uv_stream_t* stream, ssize_t nread, const uv_buf_t* nothing)
   while ((notify = PQnotifies(PQconn)) != NULL)
     {
       if(0==strcmp(notify->relname,ctx->name)) {
-        ctx->next();
+        ctx->next(ctx->udata);
       }
       PQfreemem(notify);
     }
@@ -45,7 +46,7 @@ static void reopen(uv_tcp_t* tcp) {
   uv_read_start(tcp, fakealloc, getsome);
 }
 
-void onNext(void (*next)(void)) {
+void onNext(void (*next)(void*), void* udata) {
   PQcheckClear(PQexec(PQconn,"LISTEN next"));
 
   uv_tcp_t* tcp = (uv_tcp_t*)
@@ -53,6 +54,7 @@ void onNext(void (*next)(void)) {
   struct context* ctx = tcp + sizeof(uv_tcp_t);
   tcp->data = ctx;    
   ctx->next = next;
+  ctx->udata = udata;
   ctx->name = "next";  
   reopen(tcp);
   
