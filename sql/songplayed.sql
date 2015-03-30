@@ -16,12 +16,14 @@ BEGIN
             RAISE EXCEPTION 'NObody is playing rinow';
         END IF;
         PERFORM justPlayed(_who,_song);
-        INSERT into history (song,played,who) SELECT song,_now,_who FROM recordings WHERE id = _recording;
+        INSERT into history (song,played,who,recording)
+               VALUES (_song,_now,_who,_recording);
 END;
 $$;
 CREATE TABLE history (
     id SERIAL PRIMARY KEY,
-    song bigint NOT NULL REFERENCES songs(id),
+    song bigint NOT NULL REFERENCES songs(id) on delete cascade on update cascade,
+    recording bigint NOT NULL REFERENCES recordings(id) on delete cascade on update cascade,
     who bigint REFERENCES things(id),
     played timestamptz NOT NULL);
 CREATE UNIQUE INDEX byPlayed on history(played);

@@ -21,7 +21,7 @@ make/config.mk: Makefile
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
 	mv $@.temp $@
 
-linktolatest: TARGETLIBS := -luv
+linktolatest: TARGETLIBS := /extra/user/packages/git/libuv/.libs/libuv.so
 
 -include make/config.mk
 

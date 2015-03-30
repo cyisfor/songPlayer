@@ -11,6 +11,7 @@ struct context {
 
 static void fakealloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
   // fuck tha police
+  buf->len = 0;
   return;
 }
 
@@ -19,6 +20,7 @@ static void reopen(uv_tcp_t* tcp);
 static void getsome(uv_stream_t* stream, ssize_t nread, const uv_buf_t* nothing) {
   if(nread == UV_EOF) {
     //PQclose(PQconn);
+    uv_read_stop(stream);
     reopen((uv_tcp_t*) stream);
     return;
   }
@@ -65,6 +67,6 @@ void onNext(void (*next)(void*), void* udata) {
   ctx->name = "next";  
   reopen(tcp);
   
-  uv_run(uv_default_loop(),UV_RUN_DEFAULT);
+  while(0==uv_run(uv_default_loop(),UV_RUN_DEFAULT));
   exit(-1);
 }
