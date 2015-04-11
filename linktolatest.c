@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <error.h>
+#include <time.h>
 
 #define WRITE(fd,s) write(fd,s,sizeof(s)-1)
 
@@ -72,14 +73,28 @@ static void updateLink(void* udata) {
   WRITE(dest,"<meta http-equiv=\"refresh\" content=\"");
 
   long duration = atol(PQgetvalue(result,0,4)) / 1000000000;
-  struct tm last;
-  strptime(PQgetvalue(result2,0,2),"%Y-%m-%d %H:%M:%S",&last);
+  struct tm lasttm = {};
+  strptime(PQgetvalue(result2,0,2),"%Y-%m-%d %H:%M:%S",&lasttm);
+  time_t last = mktime(&lasttm);
   // elapsed is now - last
   // left = duration - elapsed
-  long left = duration + mktime(&last) - time(NULL); 
+  long elapsed = time(NULL) - last;
+  long left = duration - elapsed;
+  printf("ummmm duration %lu elapsed %lu now %lu last %lu left %lu\n",
+         duration,elapsed,time(NULL),last,left);
   char refresh[0x10];
-  write(dest,refresh,snprintf(refresh,0x10,"%u",left + 2));
+  write(dest,refresh,snprintf(refresh,0x10,"%u",left + 72));
   WRITE(dest,"\"/>");
+  WRITE(dest,"<script type=\"text/javascript\">\n");
+  WRITE(dest,"var finished = new Date(");
+  write(dest,refresh,snprintf(refresh,0x10,"%u",last+duration+72));
+  WRITE(dest,"000);\n"        
+        "var left = finished - new Date();\n"
+        "if(left > 1000) {\n"
+        "  console.log('reloading in',left,'on',finished);\n"
+        "  var timeout = setTimeout(function() { document.location.reload(true); }, Math.max(1000,left));\n"
+        "}\n"
+        "</script>");
            
   WRITE(dest,
         "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"

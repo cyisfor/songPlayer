@@ -12,8 +12,9 @@ int main (int argc, char ** argv)
     "getTopSong",
       "SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
           "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
+    "(SELECT score FROM ratings WHERE ratings.id = songs.id) AS score,"
           "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
-          "songs.played "
+          "songs.played, songs.id "
           "FROM queue "
           "INNER JOIN recordings ON recordings.id = queue.recording "
           "INNER JOIN songs ON recordings.song = songs.id "
