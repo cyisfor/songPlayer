@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <fcntl.h>
+#include <stdbool.h>
 
 #include <assert.h>
 
@@ -155,11 +156,13 @@ static uint8_t getNumQueued(void);
 
 volatile uint8_t queueInterrupted = 0;
 
-static uint8_t queueHighestRated(void) {
+void queueRescore(void) {
     PQcheckClear(logExecPrepared(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
     PQcheckClear(logExecPrepared(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
     PQcheckClear(logExecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
+}
 
+static uint8_t queueHighestRated(void) {
 TRYAGAIN:
   queueInterrupted = 0;
   PGresult* result = pickBestRecording();
@@ -224,6 +227,19 @@ static void expireProblems(void) {
                 0,NULL,NULL,NULL,0));
 }
 
+void queuePrepare(void) {
+  /* these are used by queueRescore outside of the queuing thread */
+  preparation_t queries[] = {
+    { "scoreByLast",
+      "SELECT timeConnectionThingy(1)" },
+    { "rateByPlayer",
+      "SELECT rate(0,1)" },
+    { "resetRatings",
+      "DELETE FROM ratings"}
+  };
+  prepareQueries(queries);
+}
+
 static void* queueChecker(void* arg) {
     int truerand = open("/dev/random",O_RDONLY);
     unsigned short seed16v[3];
@@ -238,13 +254,8 @@ static void* queueChecker(void* arg) {
   PQinit();
   g_message("PQ Queue conn %p",PQconn);
   myPQtest = PQconn;
+  queuePrepare();
   preparation_t queries[] = {
-    { "scoreByLast",
-      "SELECT timeConnectionThingy(1)" },
-    { "rateByPlayer",
-      "SELECT rate(0,1)" },
-    { "resetRatings",
-      "DELETE FROM ratings"},
     { "numQueued",
       "SELECT COUNT(id) FROM queue" },
 #define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))"
@@ -280,12 +291,13 @@ static void* queueChecker(void* arg) {
 
   for(;;) {
     expireProblems();
+    queueRescore();
     fillQueue(queueHighestRated);
     waitUntilQueueNeeded(getNumQueued);
   }
 }
 
-void queueSetup(void) {
+void queueStart(void) {
   pthread_t thread;
   pthread_attr_t attr;
   pthread_attr_init(&attr);

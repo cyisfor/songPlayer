@@ -1,7 +1,8 @@
 #include <stdint.h>
 
-void queueSetup(void);
-
+void queueStart(void);
+void queuePrepare(void);
+void queueRescore(void);
 void setupOffsetCurve(double halfwayPoint);
 double offsetCurve(double x);
 void enqueue(const char* id);

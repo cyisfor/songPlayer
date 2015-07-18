@@ -1,4 +1,5 @@
 #include "pq.h"
+#include "queue.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -30,7 +31,7 @@ void switchMode(const char* who) {
   PQclear(PQexecParams(PQconn,"DELETE FROM queue",
                        0,NULL,NULL,NULL,NULL,0));
 
-
+  queueRescore();
   PGresult* result =
     PQexecParams(PQconn,"SELECT pid FROM pids WHERE id = 0",
                    0,NULL,NULL,NULL,NULL,0);
@@ -43,6 +44,7 @@ int main(void) {
     //queueSetup();
 
   PQinit();
+  queuePrepare();
 
   const char* who = getenv("who");
   assert(who!=NULL);

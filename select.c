@@ -32,14 +32,16 @@ void selectDone(void) {
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_TUPLES_OK);
   PQclear(result);
+  queueRescore();
   PQexecParams(PQconn,"COMMIT",0,NULL,NULL,NULL,NULL,0);
   selectNext();
 }
 
 void selectSetup(void) {
-  queueSetup();
+  queueStart();
 
   PQinit();
+  queuePrepare();
 
   preparation_t queries[] = {
     { "currentSongWasPlayed",

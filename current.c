@@ -53,6 +53,7 @@ int main (int argc, char ** argv)
               else puts("(null)");
           }
       }
+      PQclear(result);
       sleep(2); // can't set window title using "watch"
   }
 
