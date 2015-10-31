@@ -8,7 +8,8 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done ratebytitle ratebyalbum linktolatest
+	testadjust testqueue done ratebytitle ratebyalbum linktolatest \
+	pause
 
 all:: make/config.mk build
 	$(call status, DONE)
@@ -22,9 +23,13 @@ make/config.mk: Makefile
 	echo -n CFLAGS:="-g " > $@.temp
 	libgcrypt-config --cflags | head -c -1 >>$@.temp
 	echo -n " "  >> $@.temp
+	xml2-config --cflags | head -c -1 >> $@.temp
+	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --cflags >>$@.temp
 	echo -n LDFLAGS:="-lpq -lm " >>$@.temp
 	libgcrypt-config --libs | head -c -1 >>$@.temp
+	echo -n " "  >> $@.temp
+	xml2-config --libs | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
 	if cmp -s $@.temp $@; then rm $@.temp; else mv $@.temp $@; fi
@@ -61,7 +66,15 @@ deps/:
 
 ratebytitle: o/ratebytitleglade.o
 
+pause: o/pause.glade.o
+o/pause.glade.o: o/pause.glade.s
+
 o/ratebytitleglade.s: ratebytitle.glade
+	$(call status, MAKEARRAY, $*)
+	luajit -lluarocks.loader makearray.lua gladeFile $< >$@.temp	
+	mv $@.temp $@
+
+o/pause.glade.s: pause.glade.xml
 	$(call status, MAKEARRAY, $*)
 	luajit -lluarocks.loader makearray.lua gladeFile $< >$@.temp	
 	mv $@.temp $@

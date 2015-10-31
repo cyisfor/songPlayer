@@ -2,6 +2,7 @@
 #include <uv.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <error.h>
 
 struct context {
   const char* name;
