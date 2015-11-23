@@ -10,11 +10,16 @@ deps/%.d: %.c
 	$(call status, DEPS, $*)
 	echo -n o/ > $@.temp
 	$(CC) -MM $<  >> $@.temp
-	echo -n "$*: " >> $@.temp
+	echo -n "bin/$*: " >> $@.temp
 	luajit make/collect-deps.lua $< >> $@.temp
 	echo $@: make/implicit.mk make/collect-deps.lua >> $@.temp
 	mv $@.temp $@ 
 
-$(PROGRAMS): %: o/%.o
+$(PROGLOCS): | bin
+
+bin:
+	mkdir $@
+
+$(PROGLOCS): bin/%: o/%.o
 	$(call status, PROGRAM, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(TARGETLIBS) -o $@ $(filter %.o %.so,$^)

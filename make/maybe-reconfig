@@ -1,0 +1,7 @@
+#!/bin/sh
+if cmp -s $TEMP $DEST; then
+	rm $DEST
+else
+	mv $TEMP $DEST
+	touch $REBUILD
+fi

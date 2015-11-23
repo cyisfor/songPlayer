@@ -1,0 +1,27 @@
+ul {
+    list-style-type: none;
+}
+
+th {
+    text-align: right;
+}
+
+th:after {
+    content: ":";
+}
+
+.o {
+    background-color: #eee;
+}
+
+div {
+    margin-top: 1ex;
+}
+
+table#played {
+    margin-left: 2em;
+}
+
+li {
+    margin-right: 50%;
+}

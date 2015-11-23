@@ -41,5 +41,5 @@ for src in pairs(deps) do
     io.write(obj)
 end
 
-io.write(": make/config.mk | o/\n")
+io.write(": make/.rebuild | o/\n")
 

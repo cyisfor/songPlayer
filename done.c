@@ -1,6 +1,7 @@
 #include "pq.h"
 #include "select.h"
 
+#include <stdlib.h> // atoi
 #include <signal.h>
 
 int main(void) {

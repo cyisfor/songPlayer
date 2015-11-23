@@ -11,10 +11,15 @@ PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	testadjust testqueue done ratebytitle ratebyalbum linktolatest \
 	pause
 
-all:: make/config.mk build
+PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
+
+all:: make/.rebuild make/config.mk build
 	$(call status, DONE)
 
-build: $(PROGRAMS)
+make/.rebuild:
+	touch $@
+
+build: $(PROGLOCS)
 
 include make/implicit.mk
 
@@ -32,16 +37,16 @@ make/config.mk: Makefile
 	xml2-config --libs | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
-	if cmp -s $@.temp $@; then rm $@.temp; else mv $@.temp $@; fi
+	TEMP="$@.temp" DEST="$@" REBUILD="make/.rebuild"	./make/maybe-reconfig
 
-linktolatest: TARGETLIBS := -luv
+bin/linktolatest: TARGETLIBS := -luv
 
 -include make/config.mk
 
 deps/all.d: | deps/
 	$(call status, ALLDEPS)
 	rm -f $@.temp
-	echo -e "$(foreach prog,$(PROGRAMS),\n\n$(prog): o/$(prog).o deps/$(prog).d \ndeps/$(prog).d: | deps/)" >> $@.temp
+	echo -e "$(foreach prog,$(PROGRAMS),\n\nbin/$(prog): o/$(prog).o deps/$(prog).d \ndeps/$(prog).d: | deps/)" >> $@.temp
 	echo >>$@.temp
 	mv $@.temp $@
 
@@ -54,7 +59,7 @@ $(DEPS): deps/all.d
 
 clean:
 	$(call status, CLEAN)
-	rm -Rf o/ $(PROGRAMS) deps/ make/config.mk
+	rm -Rf o/ bin/ deps/ make/config.mk
 
 o/:
 	$(call status, MKDIR,$@)
@@ -64,9 +69,9 @@ deps/:
 	$(call status, MKDIR, $@)
 	mkdir $@
 
-ratebytitle: o/ratebytitleglade.o
+bin/ratebytitle: o/ratebytitleglade.o
 
-pause: o/pause.glade.o
+bin/pause: o/pause.glade.o
 o/pause.glade.o: o/pause.glade.s
 
 o/ratebytitleglade.s: ratebytitle.glade

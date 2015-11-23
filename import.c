@@ -5,6 +5,8 @@
 #include "preparation.h"
 #include "hash.h"
 
+#include <sys/wait.h> // waitpid
+
 #include <stdio.h>
 #include <time.h>
 #include <stdint.h>
@@ -230,7 +232,7 @@ int main(void) {
             gotDate = 1;
         }
         fclose(info);
-        waitpid(pid,0,NULL);
+        waitpid(pid,NULL,0);
         if(title && title[0]=='\0') {
             free(title);
             title = NULL;
