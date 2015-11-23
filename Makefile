@@ -18,9 +18,6 @@ REBUILD=o/.rebuild
 all:: $(REBUILD) make/config.mk build
 	$(call status, DONE)
 
-$(REBUILD): | o
-	touch $@
-
 build: $(PROGLOCS)
 
 include make/implicit.mk
@@ -66,6 +63,9 @@ clean:
 o/:
 	$(call status, MKDIR,$@)
 	mkdir $@
+
+$(REBUILD): | o/
+	touch $@
 
 deps/:
 	$(call status, MKDIR, $@)
