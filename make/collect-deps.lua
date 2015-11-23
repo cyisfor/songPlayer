@@ -40,6 +40,6 @@ for src in pairs(deps) do
     local obj = 'o/'..src:sub(1,-2)..'o'
     io.write(obj)
 end
-
-io.write(": make/.rebuild | o/\n")
+-- hax
+io.write(": o/.rebuild | o/\n")
 

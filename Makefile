@@ -13,10 +13,12 @@ PROGRAMS:=player import replaygain_scanner scanner dscanner \
 
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
 
-all:: make/.rebuild make/config.mk build
+REBUILD=o/.rebuild
+
+all:: $(REBUILD) make/config.mk build
 	$(call status, DONE)
 
-make/.rebuild:
+$(REBUILD): | o
 	touch $@
 
 build: $(PROGLOCS)
@@ -37,7 +39,7 @@ make/config.mk: Makefile
 	xml2-config --libs | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
-	TEMP="$@.temp" DEST="$@" REBUILD="make/.rebuild"	./make/maybe-reconfig
+	TEMP="$@.temp" DEST="$@"	REBUILD="$(REBUILD)" ./make/maybe-reconfig
 
 bin/linktolatest: TARGETLIBS := -luv
 
