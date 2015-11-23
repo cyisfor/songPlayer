@@ -22,7 +22,7 @@ build: $(PROGLOCS)
 
 include make/implicit.mk
 
-make/config.mk: Makefile
+make/config.mk: Makefile o/
 	$(call status, CONFIG)
 	echo -n CFLAGS:="-g " > $@.temp
 	libgcrypt-config --cflags | head -c -1 >>$@.temp
