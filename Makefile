@@ -65,7 +65,7 @@ o/:
 	mkdir $@
 
 $(REBUILD): | o/
-	touch $@
+	echo touch $@
 
 deps/:
 	$(call status, MKDIR, $@)
