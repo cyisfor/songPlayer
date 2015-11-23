@@ -76,12 +76,12 @@ o/pause.glade.o: o/pause.glade.s
 
 o/ratebytitleglade.s: ratebytitle.glade
 	$(call status, MAKEARRAY, $*)
-	luajit -lluarocks.loader makearray.lua gladeFile $< >$@.temp	
+	luajit -lluarocks.loader make/makearray.lua gladeFile $< >$@.temp	
 	mv $@.temp $@
 
 o/pause.glade.s: pause.glade.xml
 	$(call status, MAKEARRAY, $*)
-	luajit -lluarocks.loader makearray.lua gladeFile $< >$@.temp	
+	luajit -lluarocks.loader make/makearray.lua gladeFile $< >$@.temp	
 	mv $@.temp $@
 
 o/ratebytitleglade.o: o/ratebytitleglade.s
