@@ -5,6 +5,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <sys/stat.h> // mkdir
 
 char* configLocation = NULL;
 ssize_t configBase = 0;

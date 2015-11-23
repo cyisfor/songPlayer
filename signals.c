@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // adapted from http://askra.de/software/gtk-signals/x2992.html
 

@@ -5,6 +5,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <unistd.h> // read
+#include <sys/wait.h> // waitpid
 
 char lookup[] = "0123456789abcdef";
 

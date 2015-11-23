@@ -1,4 +1,6 @@
 #include "queue.h"
+#include "pq.h"
+
 
 int main(int argc, char**argv) {
     int i;

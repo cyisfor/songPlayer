@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <error.h>
+#include <string.h> // strcmp
+
 
 struct context {
   const char* name;

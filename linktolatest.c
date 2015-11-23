@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE
+#define _XOPEN_SOURCE_EXTENDED // symlink
 #include "nextreactor.h"
 #include "pq.h"
 #include "preparation.h"
@@ -9,6 +11,9 @@
 #include <errno.h>
 #include <error.h>
 #include <time.h>
+#include <sys/stat.h> // mkdir
+#include <unistd.h> // symlink
+
 
 #define WRITE(fd,s) write(fd,s,sizeof(s)-1)
 
@@ -38,7 +43,7 @@ static const char* linkhere(const char* path, ssize_t pathlen, ssize_t* len) {
 
 char* durationFormat(const char* value, ssize_t* len) {
   static char buf[0x100];
-  unsigned long duration = atol(value) / 1000000000;          
+  unsigned long duration = atol(value) / 1000000000;
   if(duration > 60) {
     int seconds = duration % 60;
     int moff = snprintf(buf, 0x100, "%um",duration / 60);
@@ -65,7 +70,7 @@ static void updateLink(void* udata) {
   PGresult* result2 =
     logExecPrepared(PQconn,"getHistory",
                     0,NULL,NULL,NULL,0);
-  
+
   const char destpath[] = "../index.html.temp";
   int dest = open(destpath,O_WRONLY|O_CREAT|O_TRUNC,0644);
   assert(dest != -1);
@@ -88,20 +93,20 @@ static void updateLink(void* udata) {
   WRITE(dest,"<script type=\"text/javascript\">\n");
   WRITE(dest,"var finished = new Date(");
   write(dest,refresh,snprintf(refresh,0x10,"%u",last+duration+72));
-  WRITE(dest,"000);\n"        
+  WRITE(dest,"000);\n"
         "var left = finished - new Date();\n"
         "if(left > 1000) {\n"
         "  console.log('reloading in',left,'on',finished);\n"
         "  var timeout = setTimeout(function() { document.location.reload(true); }, Math.max(1000,left));\n"
         "}\n"
         "</script>");
-           
+
   WRITE(dest,
         "<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\"/>\n"
-        "<title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"cache/");  
-  ssize_t len = 0;  
+        "<title>Now Playing</title></head>\n<body>\n<p>Now Playing: <a href=\"cache/");
+  ssize_t len = 0;
   const char* basename = linkhere(PQgetvalue(result,0,0),PQgetlength(result,0,0),&len);
-  
+
   write(dest,basename,len);
   WRITE(dest,"\">");
   write(dest,PQgetvalue(result,0,1),PQgetlength(result,0,1));
@@ -126,7 +131,7 @@ static void updateLink(void* udata) {
   }
   PQcheckClear(result);
   WRITE(dest,"</table>");
-  
+
   result = result2;
   int rows = PQntuples(result);
   if(rows > 0) {
@@ -167,7 +172,7 @@ static void updateLink(void* udata) {
     }
     WRITE(dest,"</ul></div>\n");
   }
-  
+
   PQcheckClear(result);
   WRITE(dest,"</body></html>\n");
 
@@ -213,7 +218,7 @@ int main(void) {
     }
   };
   PQinit();
-  
+
   prepareQueries(query);
 
   mkdir("/opt/lighttpd/www/stuff/nowplaying",0755);

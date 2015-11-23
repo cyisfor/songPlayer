@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> // strcmp
 
 
 static const char* prefix(const char* term) {

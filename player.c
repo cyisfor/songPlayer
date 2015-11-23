@@ -15,6 +15,7 @@
 #include <gst/gst.h>
 #include <string.h>
 #include <stdint.h>
+#include <sys/stat.h>
 
 #include <assert.h>
 
@@ -343,7 +344,7 @@ static gboolean on_input (GIOChannel *source,
       {
         GMainLoop* loop = (GMainLoop*) data;
         g_main_loop_quit (loop);
-        return;
+        return FALSE;
       }
     case G_IO_STATUS_ERROR:
       g_printerr("%s",error->message);
@@ -420,10 +421,10 @@ int main (int argc, char ** argv)
 
   // this parses the FLAC tags to replay gain stuff.
   GstElement* decoder = gst_element_factory_make("decodebin",NULL);
-  GstElement* converter = NULL;
+  GstElement* converter = gst_element_factory_make("audioconvert",NULL);
   GstElement* adjuster = NULL;
+
   if(!getenv("noreplaygain")) {
-    converter = gst_element_factory_make("audioconvert",NULL);
     adjuster = gst_element_factory_make("rgvolume", NULL);
     GstPad* rgsource = gst_element_get_static_pad (adjuster, "sink");
     assert(rgsource != NULL);
@@ -431,17 +432,19 @@ int main (int argc, char ** argv)
     // FLUSH_STOP event comes around. Have to wrap the event
     // handler too?
     gst_pad_set_activate_function(rgsource,on_activate);
-    if(!(adjuster && converter))
+    if(!adjuster)
       g_error("Adjuster could not be created");
     g_object_set (adjuster, "album-mode", FALSE, NULL);
     g_object_set (adjuster, "pre-amp", 6.0, NULL);
     g_object_set (adjuster, "headroom", 1.0, NULL);
-  }
+  }  
 
   GstElement* sink = gst_element_factory_make("alsasink", NULL);
 
   if(!sink)
     g_error("Sound is disabled or broken god damn doodley");
+  
+  g_object_set (sink, "sync", FALSE, NULL);
 
   /* g_object_set(sink,
           "volume",2.0,
@@ -461,14 +464,15 @@ int main (int argc, char ** argv)
 		      converter, adjuster,
 		      sink, NULL);
   else
-    gst_bin_add_many (GST_BIN (pipeline), src, decoder, sink, NULL);
+	  gst_bin_add_many (GST_BIN (pipeline), src, decoder, converter, sink, NULL);
 
   gst_element_link(src,decoder);
   if(adjuster) {
     gst_element_link_many(converter, adjuster, sink, NULL);
     g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   } else {
-    g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), sink);
+	  gst_element_link_many(converter, sink, NULL);
+	  g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   }
 
   //watchInput(loop);
