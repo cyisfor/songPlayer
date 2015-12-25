@@ -24,7 +24,7 @@ vbox:pack_start(scale,true,true,1)
 vbox:pack_start(btn,true,false,0)
 
 
-local nextProgram = arg[0]:gsub('nexter%.lua','next')
+local nextProgram = arg[0]:gsub('nexter%.lua','bin/next')
 if not nextProgram:find('/',0,true) then
     nextProgram = './' .. nextProgram
 end
