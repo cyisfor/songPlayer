@@ -6,6 +6,8 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <error.h>
+#include <string.h> // strncpy
+#include <stdbool.h>
 
 // meh!
 const char* rows[] = {
@@ -29,8 +31,83 @@ const char* rows[] = {
 	error(23,0,"oops! " #a);					\
   }
 
-int main (int argc, char ** argv)
+int last_id = -1;
+  
+struct update_properties_info {
+};
+  
+gboolean update_properties(gpointer udata) {
+  struct update_properties_info* i = (struct update_properties_info*)udata;
+  PGresult* result =
+	logExecPrepared(PQconn,"getTopSong",
+					0,NULL,NULL,NULL,0);
+
+  int i = 0;
+  if(PQntuples(result) == 0) {
+	puts("(no reply)");
+  } else {
+	int cur_id = atol(PQgetvalue(result,0,ID_COLUMN));
+	if(cur_id == last_id) {
+	  //puts("(no change)");
+	} else {
+	  last_id = cur_id;
+	  for(;i<PQnfields(result);++i) {
+		const char* value = PQgetvalue(result,0,i);
+		if(value == NULL) {
+		  value = "(null)";
+		} else if(i==3) {
+		  static char real_value[0x100];
+		  unsigned long duration = atol(value) / 1000000000;
+		  if(duration > 60) {
+			int seconds = duration % 60;
+			int amt = snprintf(real_value,0x100,"%um",duration / 60);
+			if(seconds) {
+			  amt += snprintf(real_value+amt,
+							  0x100-amt,
+							  " %us",seconds);
+			}
+		  } else {
+			snprintf(real_value,0x100,"%us",duration);
+		  }
+		  value = real_value;
+		} else if(i==0) {
+		  static char titlebuf[0x1000] = "Current Song Playing - ";
+		  strncpy(titlebuf+sizeof("Current Song Playing - ")-1,
+				  value,
+				  0x1000-(sizeof("Current Song Playing - ")-1));
+		  gtk_window_set_title(GTK_WINDOW(top),titlebuf);
+		  gtk_label_set_text(title,value);
+		}
+		
+		gtk_label_set_text(labels[i],value);
+	  }
+	}
+  }
+  PQclear(result);
+  return G_SOURCE_CONTINUE;
+}
+
+
+  
+bool activated = false;
+  
+static void
+activate (GtkApplication* app,
+          gpointer        user_data)
 {
+  if(activated) {
+	return;
+  }
+  GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
+  GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
+  GtkGrid* props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
+  GtkLabel* title =
+  	GTK_LABEL(gtk_builder_get_object(builder,"title"));
+
+
+  gtk_application_add_window(app,GTK_WINDOW(top));
+
+  activated = true;
   PQinit();
   preparation_t queries[] = {
     "getTopSong",
@@ -48,8 +125,6 @@ int main (int argc, char ** argv)
   };
   prepareQueries(queries);
 
-  gtk_init(&argc,&argv);
-
   GtkCssProvider * odd_style = gtk_css_provider_get_default ();
   GError* gerror = NULL;
   gtk_css_provider_load_from_data
@@ -58,17 +133,9 @@ int main (int argc, char ** argv)
 	 &gerror);
   assert(gerror==NULL);
 
-  GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
-  GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
-  GtkGrid* props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
-
-  GtkLabel* title =
-  	GTK_LABEL(gtk_builder_get_object(builder,"title"));
-
   GtkLabel* labels[NUM_ROWS];
   int i;
   for(i=0;i<NUM_ROWS;++i) {
-	printf("boop %s\n",rows[i]);
 	GtkLabel* name = GTK_LABEL(gtk_label_new(rows[i]));
 	gtk_label_set_xalign(name,0);
 	labels[i] = GTK_LABEL(gtk_label_new(""));
@@ -100,60 +167,20 @@ int main (int argc, char ** argv)
 
   int last_id = -1;
   
-  gboolean update_properties(gpointer udate) {
-	PGresult* result =
-	  logExecPrepared(PQconn,"getTopSong",
-					  0,NULL,NULL,NULL,0);
-
-	int i = 0;
-	if(PQntuples(result) == 0) {
-	  puts("(no reply)");
-	} else {
-	  int cur_id = atol(PQgetvalue(result,0,ID_COLUMN));
-	  if(cur_id == last_id) {
-		puts("(no change)");
-	  } else {
-		last_id = cur_id;
-		for(;i<PQnfields(result);++i) {
-		  const char* value = PQgetvalue(result,0,i);
-		  if(value == NULL) {
-			value = "(null)";
-		  } else if(i==3) {
-			static char real_value[0x100];
-			unsigned long duration = atol(value) / 1000000000;
-			if(duration > 60) {
-			  int seconds = duration % 60;
-			  int amt = snprintf(real_value,0x100,"%um",duration / 60);
-			  if(seconds) {
-				amt += snprintf(real_value+amt,
-								0x100-amt,
-								" %us",seconds);
-			  }
-			} else {
-			  snprintf(real_value,0x100,"%us",duration);
-			}
-			value = real_value;
-		  } else if(i==0) {
-			static char titlebuf[0x100] = "Current Song Playing - ";
-			strncpy(titlebuf+sizeof("Current Song Playing - ")-1,
-					value,
-					0x100-(sizeof("Current Song Playing - ")-1));
-			gtk_window_set_title(top,titlebuf);
-			gtk_label_set_text(title,value);
-			printf("erum %s\n",value);
-		  }
-		
-		  gtk_label_set_text(labels[i],value);
-		}
-	  }
-	}
-	PQclear(result);
-  }
-
   g_signal_connect(top,"destroy",gtk_main_quit,NULL);
-  g_timeout_add_seconds(2, update_properties,NULL);
   gtk_widget_show_all(top);
-  gtk_main();
+  //update_properties(NULL);
+  g_timeout_add_seconds(2, update_properties,NULL);
+}
 
-  return 0;
+int main (int argc, char ** argv) {
+  GtkApplication *app;
+  int status;
+
+  app = gtk_application_new ("current.song", G_APPLICATION_FLAGS_NONE);
+  g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
+  status = g_application_run (G_APPLICATION (app), argc, argv);
+  g_object_unref (app);
+
+  return status;
 }
