@@ -27,7 +27,7 @@ int main (int argc, char ** argv)
   };
   prepareQueries(queries);
 
-  gtk_init(argc,argv);
+  gtk_init(&argc,&argv);
 
   GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
   GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));

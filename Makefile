@@ -71,21 +71,17 @@ deps/:
 	$(call status, MKDIR, $@)
 	mkdir $@
 
-bin/ratebytitle: o/ratebytitleglade.o
-
+bin/ratebytitle: o/ratebytitle.glade.o
 bin/pause: o/pause.glade.o
+bin/current: o/current.glade.o
+
+o/%.glade.s: %.glade.xml
+	$(call status, MAKEARRAY, $*)
+	luajit -lluarocks.loader make/makearray.lua gladeFile $< >$@.temp	
+	mv $@.temp $@
+
+o/current.glade.o: o/current.glade.s
 o/pause.glade.o: o/pause.glade.s
-
-o/ratebytitleglade.s: ratebytitle.glade
-	$(call status, MAKEARRAY, $*)
-	luajit -lluarocks.loader make/makearray.lua gladeFile $< >$@.temp	
-	mv $@.temp $@
-
-o/pause.glade.s: pause.glade.xml
-	$(call status, MAKEARRAY, $*)
-	luajit -lluarocks.loader make/makearray.lua gladeFile $< >$@.temp	
-	mv $@.temp $@
-
-o/ratebytitleglade.o: o/ratebytitleglade.s
+o/ratebytitle.glade.o: o/ratebytitle.glade.s
 
 .PHONY: clean all configure build
