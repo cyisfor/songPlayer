@@ -37,7 +37,9 @@ void switchMode(const char* who) {
                    0,NULL,NULL,NULL,NULL,0);
 
   if(PQntuples(result)==0) return;
-  kill(atoi(PQgetvalue(result,0,0)),SIGUSR2);
+  if(getenv("silent")==NULL) {
+	  kill(atoi(PQgetvalue(result,0,0)),SIGUSR2);
+  }
 }
 
 int main(void) {
