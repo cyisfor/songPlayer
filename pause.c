@@ -1,8 +1,6 @@
 #include "pq.h"
 #include "preparation.h"
-
-extern const char gladeFile[];
-extern long unsigned int gladeFileSize;
+#include "o/pause.glade.ch"
 
 #include <gtk/gtk.h>
 #include <glib.h>

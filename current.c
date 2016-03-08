@@ -1,9 +1,7 @@
 #include "pq.h"
 #include "preparation.h"
 #include "settitle.h"
-
-extern const char gladeFile[];
-extern long unsigned int gladeFileSize;
+#include "o/current.glade.ch"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
@@ -56,7 +54,7 @@ int main (int argc, char ** argv)
   GError* gerror = NULL;
   gtk_css_provider_load_from_data
 	(odd_style,
-	 LENSTR("GtkLabel { background-color: shade(@base_color, 0.9); }\n"),
+	 LENSTR("GtkBox { background-color: white; }\n"),
 	 &gerror);
   assert(gerror==NULL);
 
@@ -72,20 +70,29 @@ int main (int argc, char ** argv)
   for(i=0;i<NUM_ROWS;++i) {
 	printf("boop %s\n",rows[i]);
 	GtkLabel* name = GTK_LABEL(gtk_label_new(rows[i]));
-	labels[i] = GTK_LABEL(gtk_label_new("???"));
+	gtk_label_set_xalign(name,0);
+	labels[i] = GTK_LABEL(gtk_label_new(""));
 	gtk_label_set_line_wrap (labels[i],TRUE);
 	gtk_widget_set_hexpand (GTK_WIDGET(labels[i]),TRUE);
+	gtk_label_set_xalign(labels[i],0);
 	gtk_grid_insert_row (props, i);
 	void yoinkle(int column, GtkWidget* what) {
-	  gtk_widget_set_halign(what,GTK_ALIGN_START);
+	  gtk_widget_set_vexpand(what,FALSE);
+	  // no reason to make a huge style framework just for some padding
+	  // tricky... put it in a box, that has padding
+	  // then put the box in the grid
+	  gtk_widget_set_margin_start (what, 2);
+	  GtkWidget* padding = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
+	  gtk_box_pack_start(GTK_BOX(padding),what,TRUE,TRUE,2);
+	  
 	  if(i % 2 == 1) {
 		gtk_style_context_add_provider
-		  (gtk_widget_get_style_context(what),
+		  (gtk_widget_get_style_context(padding),
 		   GTK_STYLE_PROVIDER(odd_style),
 		   GTK_STYLE_PROVIDER_PRIORITY_USER);
 	  }
 
-	  gtk_grid_attach(props, what,column,i,1,1);
+	  gtk_grid_attach(props, padding,column,i,1,1);
 	}
 	yoinkle(0,GTK_WIDGET(name));
 	yoinkle(1,GTK_WIDGET(labels[i]));
@@ -106,7 +113,7 @@ int main (int argc, char ** argv)
 	  if(cur_id == last_id) {
 		puts("(no change)");
 	  } else {
-		
+		last_id = cur_id;
 		for(;i<PQnfields(result);++i) {
 		  const char* value = PQgetvalue(result,0,i);
 		  if(value == NULL) {
@@ -127,7 +134,13 @@ int main (int argc, char ** argv)
 			}
 			value = real_value;
 		  } else if(i==0) {
+			static char titlebuf[0x100] = "Current Song Playing - ";
+			strncpy(titlebuf+sizeof("Current Song Playing - ")-1,
+					value,
+					0x100-(sizeof("Current Song Playing - ")-1));
+			gtk_window_set_title(top,titlebuf);
 			gtk_label_set_text(title,value);
+			printf("erum %s\n",value);
 		  }
 		
 		  gtk_label_set_text(labels[i],value);

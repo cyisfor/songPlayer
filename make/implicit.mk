@@ -2,6 +2,11 @@ o/%.o: %.c
 	$(call status,COMPILE, $*)
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
+o/%.glade.ch: %.glade.xml
+	$(call status, MAKEARRAY, $*)
+	name=gladeFile ../data_to_header_string/pack $< >$@.temp
+	mv $@.temp $@
+
 %.so:
 	$(call status,LIBRARY, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^)
@@ -13,7 +18,7 @@ deps/%.d: %.c
 	echo -n "bin/$*: " >> $@.temp
 	luajit make/collect-deps.lua $< >> $@.temp
 	echo $@: make/implicit.mk make/collect-deps.lua >> $@.temp
-	mv $@.temp $@ 
+	mv $@.temp $@
 
 $(PROGLOCS): | bin
 
