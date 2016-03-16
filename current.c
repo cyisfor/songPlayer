@@ -16,12 +16,13 @@ const char* rows[] = {
   "Album",
   "Duration",
   "Rating",
+  "Score",
   "Average",
   "Played",
   "Id"
 };
 
-#define ID_COLUMN 7
+#define ID_COLUMN 8
 
 #define NUM_ROWS (sizeof(rows)/sizeof(*rows))
 
@@ -31,13 +32,17 @@ const char* rows[] = {
 	error(23,0,"oops! " #a);					\
   }
 
-int last_id = -1;
-  
+GtkBuilder* builder = NULL;
+GtkWidget* top = NULL;
+GtkGrid* props = NULL;
+GtkLabel* title = NULL;
+GtkLabel* labels[NUM_ROWS] = {};
+
 struct update_properties_info {
 };
   
 gboolean update_properties(gpointer udata) {
-  struct update_properties_info* i = (struct update_properties_info*)udata;
+  //struct update_properties_info* inf = (struct update_properties_info*)udata;
   PGresult* result =
 	logExecPrepared(PQconn,"getTopSong",
 					0,NULL,NULL,NULL,0);
@@ -46,13 +51,9 @@ gboolean update_properties(gpointer udata) {
   if(PQntuples(result) == 0) {
 	puts("(no reply)");
   } else {
-	int cur_id = atol(PQgetvalue(result,0,ID_COLUMN));
-	if(cur_id == last_id) {
-	  //puts("(no change)");
-	} else {
-	  last_id = cur_id;
-	  for(;i<PQnfields(result);++i) {
+	for(;i<PQnfields(result);++i) {
 		const char* value = PQgetvalue(result,0,i);
+		//printf("herp depr %d %d %s %s\n",i,NUM_ROWS,PQfname(result,i),value);
 		if(value == NULL) {
 		  value = "(null)";
 		} else if(i==3) {
@@ -71,16 +72,13 @@ gboolean update_properties(gpointer udata) {
 		  }
 		  value = real_value;
 		} else if(i==0) {
-		  static char titlebuf[0x1000] = "Current Song Playing - ";
-		  strncpy(titlebuf+sizeof("Current Song Playing - ")-1,
-				  value,
-				  0x1000-(sizeof("Current Song Playing - ")-1));
+		  static char titlebuf[0x1000];
+                  snprintf(titlebuf,0x1000,"%s - Current Song",value);
 		  gtk_window_set_title(GTK_WINDOW(top),titlebuf);
 		  gtk_label_set_text(title,value);
 		}
 		
 		gtk_label_set_text(labels[i],value);
-	  }
 	}
   }
   PQclear(result);
@@ -95,13 +93,15 @@ static void
 activate (GtkApplication* app,
           gpointer        user_data)
 {
-  if(activated) {
+  if(top) {
+	update_properties(NULL);
+	gtk_window_present(GTK_WINDOW(top));
 	return;
   }
-  GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
-  GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
-  GtkGrid* props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
-  GtkLabel* title =
+  builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
+  top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
+  props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
+  title =
   	GTK_LABEL(gtk_builder_get_object(builder,"title"));
 
 
@@ -133,7 +133,6 @@ activate (GtkApplication* app,
 	 &gerror);
   assert(gerror==NULL);
 
-  GtkLabel* labels[NUM_ROWS];
   int i;
   for(i=0;i<NUM_ROWS;++i) {
 	GtkLabel* name = GTK_LABEL(gtk_label_new(rows[i]));
@@ -165,15 +164,18 @@ activate (GtkApplication* app,
 	yoinkle(1,GTK_WIDGET(labels[i]));
   }
 
-  int last_id = -1;
-  
   g_signal_connect(top,"destroy",gtk_main_quit,NULL);
   gtk_widget_show_all(top);
-  //update_properties(NULL);
+  update_properties(NULL);
   g_timeout_add_seconds(2, update_properties,NULL);
 }
 
 int main (int argc, char ** argv) {
+  int pid = fork();
+  assert(pid >= 0);
+  if(pid > 0) {
+	return 0;
+  }
   GtkApplication *app;
   int status;
 

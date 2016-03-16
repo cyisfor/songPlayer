@@ -163,6 +163,35 @@ void queueRescore(void) {
     PQcheckClear(logExecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
 }
 
+bool try_to_find(const char* path, const char* recording, int rlen) {
+  struct stat derp;
+  char buf[0x1000];
+  const char* parameters[] = { buf, recording };      
+  int len[] = { 0, rlen };
+  const int fmt[] = { 0, 0 };
+
+  bool for_format(const char* fmtderp) {
+    len[0] = snprintf(buf,0x1000,fmtderp,path);
+	g_warning("trying place" fmtderp)
+    if(0==stat(buf,&derp)) {
+      g_warning("found %s in %s\n",path,buf);
+      PQcheckClear(logExecPrepared(PQconn,"updatePath", 
+  	2,parameters,len,fmt,0));
+      return true;
+    }
+    return false;
+  }
+#define advance(s) \
+  if(0!=strncmp(path,s,sizeof(s)-1)) return false; \
+  path += sizeof(s)-1;
+  advance("/");
+  if(for_format("/old/%s") || for_format("/old/old/%s")) return true;
+  advance("extra/");
+  if(for_format("/old/extra/%s") || for_format("/extra/old/%s")) return true;
+  advance("user/");
+  return for_format("/home/%s") || for_format("/extra/%s");
+}
+
 static uint8_t queueHighestRated(void) {
 TRYAGAIN:
   queueInterrupted = 0;
@@ -185,11 +214,14 @@ TRYAGAIN:
       if(!PQgetvalue(exists,0,0) ||
             (0!=stat(PQgetvalue(exists,0,0),&buf))) {
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
+            if(false==try_to_find(PQgetvalue(exists,0,0),parameters[0],len[0])) {
+              PQclear(exists);
+              PQcheckClear(logExecPrepared(PQconn,"blacklist",
+										   2,parameters,len,fmt,0));
+              PQclear(result);
+              return queueHighestRated();
+            }
             PQclear(exists);
-            PQcheckClear(logExecPrepared(PQconn,"blacklist",
-                        2,parameters,len,fmt,0));
-            PQclear(result);
-            return queueHighestRated();
         }
 
     }
@@ -277,6 +309,8 @@ static void* queueChecker(void* arg) {
       "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",
         "SELECT path FROM recordings WHERE id = $1" },
+    { "updatePath",
+        "UPDATE recordings SET path = $1 WHERE id = $2" },
     { "blacklist",
         "INSERT INTO problems (id,reason) VALUES ($1,$2)" },
     { "expireProblems",

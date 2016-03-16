@@ -10,11 +10,11 @@
 __thread PGconn* PQconn = NULL;
 
 void PQinit(void) {
-  /*const char* keywords[] = {"port","dbname","user","password",NULL};
-  const char* values[] = {"5433","semantics","ion",password,NULL};
+  /*const char* keywords[] = {"port","dbname","user","host","password",NULL};
+  const char* values[] = {"5433","semantics","ion","/run",password,NULL};
   */
-  const char* keywords[] = {"port","dbname",NULL};
-  const char* values[] = {"5433","semantics",NULL};
+  const char* keywords[] = {"host","port","user","dbname",NULL};
+  const char* values[] = {"/run","5433","user","semantics",NULL};
   PQconn = PQconnectdbParams(keywords,values, 0);
   assert(PQconn);
 }
