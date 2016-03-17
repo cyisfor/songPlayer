@@ -172,7 +172,7 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 
   bool for_format(const char* fmtderp) {
     len[0] = snprintf(buf,0x1000,fmtderp,path);
-	g_warning("trying place" fmtderp)
+	g_warning("trying place %s", fmtderp);
     if(0==stat(buf,&derp)) {
       g_warning("found %s in %s\n",path,buf);
       PQcheckClear(logExecPrepared(PQconn,"updatePath", 

@@ -25,3 +25,9 @@ table#played {
 li {
     margin-right: 50%;
 }
+
+table#info {
+	border: thin solid black;
+	padding: 1em;
+	margin-bottom: 0.5em;
+}

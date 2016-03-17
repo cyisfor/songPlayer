@@ -190,10 +190,11 @@ int main(void) {
   preparation_t query[] = {
     {
       "getTopSongPath",
-      "SELECT recordings.path,songs.title,artists.name as artist,albums.title as album, "
-      "recordings.duration,"
-      "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
-      "songs.played AS \"last played\""
+      "SELECT recordings.path,songs.title,artists.name as Artist, "
+	  "albums.title as Album, "
+      "recordings.duration as Duration,"
+      "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS Rating,"
+      "songs.played AS \"Last Played\""
       "FROM queue "
       "INNER JOIN recordings ON recordings.id = queue.recording "
       "INNER JOIN songs ON recordings.song = songs.id "
@@ -221,9 +222,9 @@ int main(void) {
 
   prepareQueries(query);
 
-  mkdir("/opt/lighttpd/www/stuff/nowplaying",0755);
-  mkdir("/opt/lighttpd/www/stuff/nowplaying/cache",0755);
-  chdir("/opt/lighttpd/www/stuff/nowplaying/cache");
+  mkdir("/custom/lighttpd/www/stuff/nowplaying",0755);
+  mkdir("/custom/lighttpd/www/stuff/nowplaying/cache",0755);
+  chdir("/custom/lighttpd/www/stuff/nowplaying/cache");
   updateLink(NULL);
   onNext(updateLink,NULL);
   exit(23);
