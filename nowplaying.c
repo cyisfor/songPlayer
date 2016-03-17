@@ -190,11 +190,9 @@ int main(void) {
   preparation_t query[] = {
     {
       "getTopSongPath",
-      "SELECT recordings.path,songs.title,artists.name as Artist, "
-	  "albums.title as Album, "
-      "recordings.duration as Duration,"
-      "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS Rating,"
-      "songs.played AS \"Last Played\""
+      "SELECT recordings.path, "
+	  "songs.title, "
+#include "o/nowplaying.fields.ch"
       "FROM queue "
       "INNER JOIN recordings ON recordings.id = queue.recording "
       "INNER JOIN songs ON recordings.song = songs.id "

@@ -6,6 +6,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <sys/wait.h> // waitpid
+#include <signal.h> // raise
+#include <ctype.h> // isspace
 
 struct string {
     char* str;
@@ -241,7 +244,7 @@ int linky(const char* target, ...) {
 }
 
 struct string* stringJoin(int amount, ...) {
-    if(amount==0) return;
+    if(amount==0) return NULL;
     va_list list;
     va_start(list,amount);
     int i;

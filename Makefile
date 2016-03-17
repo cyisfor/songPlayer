@@ -8,7 +8,7 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done ratebytitle ratebyalbum nowplaying \
+	testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying.make \
 	pause
 
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
@@ -74,5 +74,11 @@ deps/:
 o/ratebytitle.o: o/ratebytitle.glade.ch
 o/pause.o: o/pause.glade.ch
 o/current.o: o/current.glade.ch
+
+o/nowplaying.o: o/nowplaying.fields.ch
+
+o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying.make 
+	./bin/nowplaying.make <nowplaying.fields.conf >$@.temp
+	mv $@.temp $@
 
 .PHONY: clean all configure build
