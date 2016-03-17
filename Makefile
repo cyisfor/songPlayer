@@ -8,7 +8,7 @@ CFLAGS:=-g
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
-	testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying.make \
+	testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make \
 	pause
 
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
@@ -22,7 +22,7 @@ build: $(PROGLOCS)
 
 include make/implicit.mk
 
-make/config.mk: Makefile | o/
+make/config.mk: | o/
 	$(call status, CONFIG)
 	echo -n CFLAGS:="-g " > $@.temp
 	libgcrypt-config --cflags | head -c -1 >>$@.temp
@@ -77,8 +77,9 @@ o/current.o: o/current.glade.ch
 
 o/nowplaying.o: o/nowplaying.fields.ch
 
-o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying.make 
-	./bin/nowplaying.make <nowplaying.fields.conf >$@.temp
+o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make 
+	$(call status, FIELDING, nowplaying)
+	./bin/nowplaying-make <nowplaying.fields.conf >$@.temp
 	mv $@.temp $@
 
 .PHONY: clean all configure build
