@@ -424,6 +424,31 @@ int main (int argc, char ** argv)
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
 
+  int quitpipe[2];
+  pipe(quitpipe);
+  
+  void done_quit() {
+	close(quitpipe[1]);
+  }
+  onSignal(SIGINT,done_quit);
+  onSignal(SIGQUIT,done_quit);
+  onSignal(SIGTERM,done_quit);
+  
+  GIOChannel* g_signal_in = g_io_channel_unix_new(quitpipe[0]);  
+  g_io_channel_set_encoding(g_signal_in, NULL, &error);  
+  g_io_channel_set_flags(g_signal_in,     
+      g_io_channel_get_flags(g_signal_in) | G_IO_FLAG_NONBLOCK, &error);
+
+  void really_quit() {
+	g_main_loop_quit(loop);
+  }
+	  
+  /* register the reading end with the event loop */
+  GSource* quitsource = g_io_create_watch
+	(g_signal_in, G_IO_IN | G_IO_PRI, really_quit, NULL);
+  g_source_attach(quitsource, loop);
+
+
   pipeline = gst_pipeline_new ("pipeline");
 
   src = gst_element_factory_make ("filesrc", NULL);
