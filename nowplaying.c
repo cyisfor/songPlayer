@@ -115,7 +115,11 @@ static void updateLink(void* udata) {
   int i;
   int cols = PQnfields(result);
   for(i=2;i<cols;++i) {
-    WRITE(dest,"  <tr><th>");
+    WRITE(dest,"  <tr");
+	if(i%2==0) {
+	  WRITE(dest," class=\"o\"");
+	}
+	WRITE(dest,"><th>");
     const char* name = PQfname(result,i);
     write(dest,name,strlen(name));
     WRITE(dest,"</th><td>");

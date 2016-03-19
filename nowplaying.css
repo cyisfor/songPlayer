@@ -3,11 +3,8 @@ ul {
 }
 
 th {
-    text-align: right;
-}
-
-th:after {
-    content: ":";
+    text-align: left;
+	padding-right: 1em;
 }
 
 .o {

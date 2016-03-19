@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	if(first) {
 	  first = false;
 	} else {
-	  fputs("\\\", \"\n",stdout);
+	  fputs(", \"\n",stdout);
 	}
 	
 	fputs("\"",stdout);
@@ -29,8 +29,10 @@ int main(int argc, char *argv[])
 	fwrite(value,len,1,stdout);
 	fputs(" AS \\\"",stdout);
 	fwrite(line,colon-line,1,stdout);
+	fputc(':',stdout);
+	fputs("\\\"",stdout);
   }	
-	fputc('"',stdout);
+  fputc('"',stdout);
   return 0;
 }
 /*
