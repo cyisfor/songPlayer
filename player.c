@@ -384,9 +384,8 @@ static void restartPlayer(int signal) {
 
 int main (int argc, char ** argv)
 {
-  pq_application_name = "player";
   PQinit();
-  if(!declare_pid()) {
+  if(!declare_pid("player")) {
 	puts("Player already found");
 	return 1;
   }
@@ -406,20 +405,8 @@ int main (int argc, char ** argv)
       "replaygain.gain,replaygain.peak,replaygain.level,"
       "recordings.path "
       "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1" },
-    { "setPID",
-      "SELECT setPID(0,$1)"}
   };
   prepareQueries(queries);
-
-  {
-    char buf[8];
-    const char* values[1] = { buf };
-    int lengths[1];
-    const int fmt[1] = { 0 };
-    lengths[0] = snprintf(buf,8,"%d",getpid());
-    logExecPrepared(PQconn,"setPID",
-                   1,values,lengths,fmt,0);
-  }
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
   void done_quit() {

@@ -7,6 +7,13 @@
 #include <string.h> // strlen
 #include <stdint.h>
 #include <stdlib.h> // atexit
+#include <sys/stat.h> // mkdir
+#include <fcntl.h> // open
+#include <errno.h> // errno
+
+#include <stdio.h> // snscanf
+
+const char* g_application_name = "song-player";
 
 const char* get_pidloc(void) {
   return configAt("pids");
@@ -21,18 +28,18 @@ int get_pid(const char* application_name, ssize_t len) {
   int ret = 0;
   char buf[0x100];
   int amt = read(inp,buf,0x100);
+  buf[amt] = '\0';
   assert(amt>0);
-  if(1!=snscanf(buf,amt,"%d",&ret))
-	return -2;
-  return ret;
+  return atoi(buf);
 }
 
 static void get_pid_done(void) {
   if(0==chdir(get_pidloc()))
-	unlink(application_name);
+	unlink(g_application_name);
 }
 
-bool declare_pid(void) {
+bool declare_pid(const char* application_name) {
+  g_application_name = application_name;
   const char* loc = get_pidloc();
   mkdir(loc,0700);
   chdir(loc);
