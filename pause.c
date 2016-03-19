@@ -42,7 +42,7 @@ int main(void) {
   dolock();
 
   PQinit();
-  player_pid_init();
+  get_pid_init();
   gtk_init(NULL,NULL);
 
   GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
@@ -50,7 +50,7 @@ int main(void) {
 
   gtk_window_stick(GTK_WINDOW(top));
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
-  int pid = player_pid();
+  int pid = get_pid("player",sizeof("player")-1);
   kill(pid, SIGSTOP);
   g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(unpause),NULL);
   gtk_widget_show_all(top);

@@ -385,14 +385,20 @@ static void restartPlayer(int signal) {
 int main (int argc, char ** argv)
 {
   pq_application_name = "player";
+  PQinit();
+  get_pid_init();
+  if(get_pid("player",sizeof("player")-1) == -2) {
+	puts("Player already found");
+	return 1;
+  }
+  get_pid_I_am("player");
+
   srandom(time(NULL));
   arguments = argv;
   signalsSetup();
   gst_init (NULL,NULL);
   configInit();
   selectSetup();
-  player_pid_init();
-  if(player_pid() >= 0) return 1;
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);
 
