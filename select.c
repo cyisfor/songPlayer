@@ -39,7 +39,6 @@ void selectDone(void) {
 
 void selectSetup(void) {
   queueStart();
-
   PQinit();
   queuePrepare();
 

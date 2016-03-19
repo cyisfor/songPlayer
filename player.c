@@ -6,6 +6,7 @@
 #include "synchronize.h"
 #include "queue.h"
 #include "signals.h"
+#include "get_pid.h"
 
 #include <fcntl.h> // open O_RDONLY
 #include <unistd.h> // STDIN_FILENO
@@ -383,12 +384,15 @@ static void restartPlayer(int signal) {
 
 int main (int argc, char ** argv)
 {
+  pq_application_name = "player";
   srandom(time(NULL));
   arguments = argv;
   signalsSetup();
   gst_init (NULL,NULL);
   configInit();
   selectSetup();
+  player_pid_init();
+  if(player_pid() >= 0) return 1;
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);
 

@@ -8,13 +8,16 @@
 #include <stdlib.h>
 
 __thread PGconn* PQconn = NULL;
+const char* pq_application_name = "songplayer?";
 
 void PQinit(void) {
   /*const char* keywords[] = {"port","dbname","user","host","password",NULL};
   const char* values[] = {"5433","semantics","ion","/run",password,NULL};
   */
-  const char* keywords[] = {"host","port","user","dbname",NULL};
-  const char* values[] = {"/run","5433","user","semantics",NULL};
+  const char* keywords[] = {"host","port","user","dbname",
+							"application_name",NULL};
+  const char* values[] = {"/run","5433","user","semantics",
+						  pq_application_name,NULL};
   PQconn = PQconnectdbParams(keywords,values, 0);
   assert(PQconn);
 }

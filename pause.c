@@ -1,5 +1,6 @@
 #include "pq.h"
 #include "preparation.h"
+#include "get_pid.h"
 #include "o/pause.glade.ch"
 
 #include <gtk/gtk.h>
@@ -30,10 +31,10 @@ static void dolock(void) {
   };
 }
 
-int player_pid = -1;
+int pid = -1;
 
 static void unpause(GtkWidget* top, void* nothing) {
-  kill(player_pid,SIGCONT);
+  kill(pid,SIGCONT);
   exit(0);
 }
 
@@ -49,8 +50,8 @@ int main(void) {
 
   gtk_window_stick(GTK_WINDOW(top));
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
-  player_pid = getsqlpid(0);
-  kill(player_pid, SIGSTOP);
+  int pid = player_pid();
+  kill(pid, SIGSTOP);
   g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(unpause),NULL);
   gtk_widget_show_all(top);
   gtk_main();

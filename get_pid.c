@@ -1,13 +1,18 @@
+#include "player_pid.h"
+#include "preparation.h"
+#include "pq.h"
+#include <arpa/inet.h> // ntohl
+
 void player_pid_init(void) {
   preparation_t queries[] = {
     { "getpid",
-      "select pid from pids where id = $1::smallint"
+      "select pid from pg_stat_activity where datname = 'semantics' AND application_name = 'player'"
     }
   };
   prepareQueries(queries);
 }
 
-int player_pid(uint16_t who) {
+int player_pid(void) {
   const char* values[1];
   int lengths[1];
   int fmt[1];
@@ -24,7 +29,7 @@ int player_pid(uint16_t who) {
      lengths,fmt,1);
      
   assert(PQntuples(result)==1);
-  uint32_t pid = (uint32_t)ntohl(*((uint32_t*)PQgetvalue(result,0,0)));
+  int pid = (int)ntohl(*((int*)PQgetvalue(result,0,0)));
   PQclear(result);
   return pid;
 }

@@ -3,6 +3,7 @@
 // need one connection per thread :/
 extern __thread PGconn* PQconn;
 
+extern const char* pq_application_name;
 void PQinit(void);
 
 void PQassert_p(PGresult* result, int test, const char* tests, const char* file, int line);
