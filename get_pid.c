@@ -10,19 +10,17 @@
 void get_pid_init(void) {
   preparation_t queries[] = {
 	{ "declare",
-	  "INSERT INTO pids (application_name,pid) SELECT $1::text,$2::int"},
-	{ "postgresqlsucks",
-	  "DELETE FROM pids WHERE application_name = $1::text"},
+	  "INSERT INTO pids (dbpid,pid) SELECT pid,$2::int from pg_stat_activity where application_name = $1::text"},
     { "getpid",
-      "select pid from pids WHERE application_name = $1::text"}
+      "select pids.pid from pids INNER JOIN pg_stat_activity "
+	  "ON pids.dbpid = pg_stat_activity.pid "
+	  "WHERE application_name = $1::text"}
   };
+  // sure would be nice if postgresql didn't suck
   PQexecParams
-		  (PQconn,
-		   "CREATE TABLE pids (\n"
-		   "id SERIAL PRIMARY KEY, \n"
-		   "pid INTEGER UNIQUE NOT NULL, \n"
-		   "application_name TEXT UNIQUE NOT NULL)",
-		   0, NULL, NULL, NULL, NULL, 0);
+	(PQconn,
+	 "DELETE FROM pids WHERE dbpid NOT IN (SELECT pid FROM pg_stat_activity)",
+	 0, NULL, NULL, NULL, NULL, 0);
   prepareQueries(queries);
 }
 
@@ -50,16 +48,18 @@ int get_pid(const char* application_name, ssize_t len) {
 }
 
 static void get_pid_done(void) {
+  printf("do it? %s\n",pq_application_name);
   const char* values[1];
   int lengths[1];
   const int fmt[1] = { 1 };
-  values[0] = pq_application_name;
-  lengths[0] = strlen(pq_application_name); 
-  PQexecPrepared
-	(PQconn,
-	 "postgresqlsucks",
-	 1,
-	 values,lengths,fmt,1);
+  int32_t ival = htonl(getpid());
+  values[0] = (const char*)&ival;
+  lengths[0] = sizeof(ival);
+  PQcheckClear(PQexecParams
+			   (PQconn,
+				"DELETE FROM pids WHERE pid = $1::int",
+				1,
+				NULL,values,lengths,fmt,1));
 }
 
 bool get_pid_declare(void) {
@@ -78,6 +78,7 @@ bool get_pid_declare(void) {
    values,lengths,fmt,1);
   bool ok = PQresultStatus(result) == PGRES_COMMAND_OK;
   if(ok) {
+	printf("yay?");
 	atexit(get_pid_done);
   }
   return ok;

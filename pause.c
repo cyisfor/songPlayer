@@ -51,6 +51,8 @@ int main(void) {
   gtk_window_stick(GTK_WINDOW(top));
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
   int pid = get_pid("player",sizeof("player")-1);
+  if(pid < 0) return 1;
+  //printf("stop %d\n",pid);
   kill(pid, SIGSTOP);
   g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(unpause),NULL);
   gtk_widget_show_all(top);
