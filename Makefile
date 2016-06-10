@@ -9,7 +9,7 @@ CFLAGS:=-g
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
 	testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make \
-	pause
+	pause playlist
 
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
 
@@ -38,7 +38,7 @@ make/config.mk: | o/
 	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
 	TEMP="$@.temp" DEST="$@"	REBUILD="$(REBUILD)" ./make/maybe-reconfig
 
-bin/nowplaying: TARGETLIBS := -luv
+bin/nowplaying bin/playlist: TARGETLIBS := -luv
 
 -include make/config.mk
 
