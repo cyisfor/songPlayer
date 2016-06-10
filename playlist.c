@@ -17,6 +17,7 @@ struct client {
 };
 
 #define PORT 7892
+#define SPORT "7892" // sigh...
 
 #define CHECK(status, msg)											\
   if (status != 0) {																			 \
@@ -29,13 +30,13 @@ GHashTable* clients = NULL;
 uv_buf_t latest_song[] = {
 	{}, // host://site/prefix/
 	{}, // filename
-	{"\r\n",2}
+	{"\n",1}
 };
 
 void on_closed(uv_handle_t* handle) {
 	struct client* client = (struct client*)handle->data;
 	g_hash_table_remove(clients,client);
-	g_free(client->buffer);
+	g_byte_array_free(client->buffer,TRUE);
 	g_free(client->buf.base);
 	g_free(client);
 }
@@ -68,11 +69,16 @@ void get_latest_song() {
 	}
 
 	latest_song[1].len = PQgetlength(current_song,0,0);
-	const char* base = strrchr(PQgetvalue(current_song,0,0),'/');
+	char* path = PQgetvalue(current_song,0,0);
+	printf("uhhh %s\n",path);
+				 
+	char* base = strrchr(path,'/');
 	if(base == NULL)
-		base = PQgetvalue(current_song,0,0);
-	latest_song[1].base = g_strndup(base,
-																	latest_song[1].len);
+		base = g_uri_escape_string(path,NULL,FALSE);
+	else
+		base = g_uri_escape_string(base+1,NULL,FALSE);
+	latest_song[1].base = base;
+	latest_song[1].len = strlen(base);
 	PQcheckClear(current_song);
 }
 
@@ -146,7 +152,7 @@ void alloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
 
 void on_connect(uv_stream_t* server_handle, int status) {
 	CHECK(status,"connect");
-	struct client* client = g_new(struct client,1);
+	struct client* client = g_new0(struct client,1);
 	uv_tcp_init(uv_default_loop(),&client->handle);
 	client->handle.data = client;
 	client->buffer = g_byte_array_new();
@@ -155,25 +161,22 @@ void on_connect(uv_stream_t* server_handle, int status) {
 	uv_read_start((uv_stream_t*)&client->handle, alloc, on_read);
 }
 
-#define S(derp) #derp
-
 int main(int argc, char** argv) {
 	const char* format;
 	const char* host = getenv("host");
 	const char* prefix = getenv("prefix");
 	if(getenv("prefix")) {
-		format = "http://%s:" S(PORT) "/%s/";
+		format = "http://[%s]/%s/";
 	} else {
-		format = "http://%s:" S(PORT) "/";
+		format = "http://[%s]/";
 	}
 	latest_song[0].len = g_snprintf(NULL,0,
 																	 format,
-																	 host,prefix);
+																	 host,prefix)+1;
 	latest_song[0].base = g_malloc(latest_song[0].len);
 	g_snprintf(latest_song[0].base,latest_song[0].len,
 						 format,
 						 host,prefix);
-
 	preparation_t query[] = {
     {
       "getTopSongPath",
