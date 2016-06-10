@@ -29,6 +29,8 @@ struct client {
 // can cache this between songs
 // but update the uv_buf_t len, not this!
 #define SONGS_PLAYED_DERP 0x100
+#define LENGTH_DERP 0x100
+gchar length_buf[LENGTH_DERP];
 gchar songs_played_buf[SONGS_PLAYED_DERP];
 
 gint songs_played = 0;
@@ -42,7 +44,14 @@ gint songs_played = 0;
 uv_buf_t http_session[] = {
 	{LIT("HTTP/1.0 200 OK\r\n"
 			"Content-Type: audio/mpegurl\r\n"
-			"\r\n"
+			 "Date: Fri, 10 Jun 2016 23:41:02 GMT\r\n"
+			 "Last-Modified: Fri, 10 Jun 2016 23:05:30 GMT\r\n"
+			 "ETag: \"2047657876\"\r\n"
+			 "Server: derp\r\n"
+
+			 "Content-Length: ")},
+	{length_buf, 0}, // content length
+	{LIT("\r\n\r\n"
 #ifdef USEEXT
 			"#EXTM3U"
 			 INL INL
@@ -57,7 +66,11 @@ uv_buf_t http_session[] = {
 #endif
 	{}, // host://site/prefix/
 	{}, // filename
-	{LIT(INL INL)},
+	{LIT(INL
+#ifdef USEEXT
+			 INL
+#endif
+			 )},
 #ifdef USEEXT
 	{LIT("#EXTINF:0, Next Song" INL)},
 #endif
@@ -67,19 +80,26 @@ uv_buf_t http_session[] = {
 };
 
 #ifdef USEEXT
-enum { DURATION = 2,
-			 TITLE = 4,
-			 PREFIX = 6,
-			 FILENAME = 7,
-			 PLAYLIST_URI = 0xa,
-			 SONGS_PLAYED = 0xb
+enum { LENGTH = 1,
+			 DURATION = 5,
+			 TITLE = 6,
+			 PREFIX = 8,
+			 FILENAME = 9,
+			 PLAYLIST_URI = 0xc,
+			 SONGS_PLAYED = 0xd
 };
+
+#define BODY_FIELDS X(2) X(3) X(4) X(5) X(6) X(7) X(8) X(9) \
+	X(0xa) X(0xb) X(0xc) X(0xd) 
+
 #else
-enum { PREFIX = 1,
-			 FILENAME = 2,
-			 PLAYLIST_URI = 4,
-			 SONGS_PLAYED = 5
+enum { LENGTH = 1,
+			 PREFIX = 3,
+			 FILENAME = 4,
+			 PLAYLIST_URI = 6,
+			 SONGS_PLAYED = 7
 };
+#define BODY_FIELDS X(3) X(4) X(5) X(6) X(7) X(8)
 #endif
 
 GPtrArray* waiters = NULL;
@@ -146,6 +166,18 @@ void get_latest_song() {
 						 SONGS_PLAYED_DERP,"%x",
 
 						 ++songs_played);
+
+	// content length is tricky b/c vector of strings...
+	// and stupid ifdefs
+
+	http_session[LENGTH].len =
+		snprintf(http_session[LENGTH].base,
+						 LENGTH_DERP,"%ld",
+#define X(n) http_session[n].len +
+						 BODY_FIELDS
+#undef X
+					 // extra \r\n\r\n in there
+					 0 );
 }
 
 void broadcast_song(uv_tcp_t* server) {	
