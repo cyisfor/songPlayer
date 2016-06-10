@@ -1,7 +1,20 @@
-#include <libuv.h>
-
 #include "nextreactor.h"
+#include "pq.h"
 
+#include <uv.h>
+#include <glib.h>
+#include <stdlib.h> // exit
+#include <string.h>
+
+#include <assert.h>
+
+struct client {
+	uv_write_t write_req;
+	uv_tcp_t handle;
+	GByteArray* buffer;
+};
+
+#define PORT 7892
 
 #define CHECK(status, msg)											\
   if (status != 0) {																			 \
@@ -53,18 +66,25 @@ void broadcast_song(uv_tcp_t* server) {
 	// in case uv_write immediately calls the callback
 	// (it doesn't, but just in case)
 	GHashTable* in_use = clients;
-	clients = g_hash_table_new(g_pointer_hash,
-															 g_pointer_equal);
+	clients = g_hash_table_new(g_direct_hash,
+															 g_direct_equal);
 	if(in_use == NULL) {
 		// just starting up
 		// okay, we got our first song, so start listening
-		r = uv_tcp_bind(&server, 0x1000, on_connect);
+		struct sockaddr_in6 address;
+		int r = uv_ip6_addr(getenv("address"), PORT, &address);
+		CHECK(r,"ip6_addr");
+		r = uv_tcp_bind((uv_tcp_t*)server,
+												(const struct sockaddr*)&address,
+										0);
 		CHECK(r,"tcp_bind");
+		r = uv_listen((uv_stream_t*)server,0x1000, on_connect);
+		CHECK(r,"listen");				
 	} else {
 		g_hash_table_foreach(in_use,
 												 // sorcery, the key is the first arg
 												 // so don't care about arg 2, and 3
-												 write_latest,
+												 (void*)write_latest,
 												 NULL);
 		g_hash_table_destroy(in_use);
 	}
@@ -83,8 +103,8 @@ void after_write(uv_write_t* req, int status) {
 
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	struct client* client = (struct client*)handle->data;
-	client->buffer = g_byte_array_append(client->buffer, data, nread);
-	char* where = strcmp(client->buffer->data,"\r\n\r\n");
+	client->buffer = g_byte_array_append(client->buffer, buf->base, nread);
+	guint8* where = strstr(client->buffer->data,"\r\n\r\n");
 	// wow is this cheap
 	if(where == NULL) return;
 	client->buffer = g_byte_array_remove_range(client->buffer,
@@ -121,7 +141,6 @@ void on_connect(uv_stream_t* server_handle, int status) {
 	uv_read_start((uv_stream_t*)&client->handle, alloc, on_read);
 }
 
-#define PORT 7892
 #define S(derp) #derp
 
 int main(int argc, char** argv) {
@@ -159,8 +178,5 @@ int main(int argc, char** argv) {
 	CHECK(r,"tcp_init");
 	r = uv_tcp_keepalive(&server,1,60);
 	CHECK(r,"tcp_keepalive");
-	struct sockaddr_in6 address;
-	r = uv_ip6_addr(getenv("address"), PORT,&address);
-	CHECK(r,"ip6_addr");
 	onNext((void*)send_song,&server);
 }

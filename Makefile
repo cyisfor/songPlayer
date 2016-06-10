@@ -1,10 +1,14 @@
-MAKEFLAGS+=-s
 white := $(shell echo -ne "\x1b[1m")
 yellow := $(shell echo -ne "\x1b[1;33m")
 reset := $(shell echo -ne "\x1b[0m")
 status = $(info $(white)$(strip $(1))$(yellow) $(strip $(2))$(reset))
 
-CFLAGS:=-g
+ifeq ($(origin V), undefined)
+MAKEFLAGS:=-s
+endif
+
+
+CFLAGS+=-g -fdiagnostics-color=always
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
@@ -24,13 +28,13 @@ include make/implicit.mk
 
 make/config.mk: | o/
 	$(call status, CONFIG)
-	echo -n CFLAGS:="-g " > $@.temp
+	echo -n CFLAGS+="-g -fdiagnostics-color=always " > $@.temp
 	libgcrypt-config --cflags | head -c -1 >>$@.temp
 	echo -n " "  >> $@.temp
 	xml2-config --cflags | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
 	pkg-config gtk+-3.0 gstreamer-1.0 --cflags >>$@.temp
-	echo -n LDFLAGS:="-lpq -lm " >>$@.temp
+	echo -n LDFLAGS+="-lpq -lm " >>$@.temp
 	libgcrypt-config --libs | head -c -1 >>$@.temp
 	echo -n " "  >> $@.temp
 	xml2-config --libs | head -c -1 >> $@.temp
