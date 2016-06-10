@@ -33,31 +33,54 @@ gchar songs_played_buf[SONGS_PLAYED_DERP];
 
 gint songs_played = 0;
 
+#define INL "\n"
+
+#ifdef PLAYERS_DONT_SUCK
+#define USEEXT
+#endif
+
 uv_buf_t http_session[] = {
 	{LIT("HTTP/1.0 200 OK\r\n"
-			"Content-Type: application/vnd.apple.mpegurl\r\n"
+			"Content-Type: audio/mpegurl\r\n"
 			"\r\n"
-			"#EXTM3U\r\n\r\n")},
+#ifdef USEEXT
+			"#EXTM3U"
+			 INL INL
+#endif
+			 )},
+#ifdef USEEXT
 	{LIT("#EXTINF:")},
 	{}, // track duration
 	{LIT(", ")},
 	{}, // track title
-	{LIT("\r\n")},
+	{LIT(INL)},
+#endif
 	{}, // host://site/prefix/
 	{}, // filename
-	{LIT("\r\n\r\n")},
+	{LIT(INL INL)},
+#ifdef USEEXT
+	{LIT("#EXTINF:0, Next Song" INL)},
+#endif
 	{}, // host://site:port/
 	{songs_played_buf,0}, // "%x" printf songs_played counter
-	{LIT("\r\n")}
+	{LIT(INL)}
 };
 
+#ifdef USEEXT
 enum { DURATION = 2,
 			 TITLE = 4,
 			 PREFIX = 6,
 			 FILENAME = 7,
-			 PLAYLIST_URI = 9,
-			 SONGS_PLAYED = 0xa
+			 PLAYLIST_URI = 0xa,
+			 SONGS_PLAYED = 0xb
 };
+#else
+enum { PREFIX = 1,
+			 FILENAME = 2,
+			 PLAYLIST_URI = 4,
+			 SONGS_PLAYED = 5
+};
+#endif
 
 GPtrArray* waiters = NULL;
 
@@ -95,6 +118,7 @@ void get_latest_song() {
 		return;
 	}
 
+#ifdef USEEXT
 #define COPY_OVER(dest, src)																				\
 		http_session[dest].len = PQgetlength(current_song,0,src);				\
 		http_session[dest].base = g_realloc(http_session[dest].base,			\
@@ -104,6 +128,7 @@ void get_latest_song() {
 	COPY_OVER(DURATION,1);
 	COPY_OVER(TITLE, 2);
 #undef COPY_OVER
+#endif
 
 	g_free(http_session[FILENAME].base);
 	char* path = PQgetvalue(current_song,0,0);
@@ -144,16 +169,18 @@ void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	}
 	struct client* client = (struct client*)handle->data;
 	g_byte_array_append(client->buffer, (const guint8*)buf->base, nread);
-	guint8* where = strstr(client->buffer->data,"\r\n\r\n");
+	guint8* where = (guint8*)
+		strstr((const char*)client->buffer->data,"\r\n\r\n");
 	// wow is this cheap
 	if(where == NULL) return;
-	guint8* slastid = strstr((const char*)client->buffer->data,"GET /");
+	guint8* slastid = (guint8*)
+		strstr((const char*)client->buffer->data,"GET /");
 	if(slastid == NULL) {
 		uv_close((uv_handle_t*)handle,on_closed);
 		return;
 	}
 	slastid += sizeof("GET /")-1;
-	gint lastid = strtol(slastid,NULL,0x10);
+	gint lastid = strtol((const char*)slastid,NULL,0x10);
 	printf("lastid %x %s\n",lastid,slastid);
 	// we're done with the headers, so remove
 	g_byte_array_remove_range(client->buffer,
@@ -196,7 +223,6 @@ int main(int argc, char** argv) {
 	const char* format;
 	const char* host = getenv("host");
 	assert(host);
-	const char* prefix = getenv("prefix");
 
 	#define DOPRINTF(what, ...) http_session[what].len = g_snprintf \
 			(NULL,0,																									 \
@@ -221,12 +247,16 @@ int main(int argc, char** argv) {
 	preparation_t query[] = {
     {
       "getTopSongPath",
-			"SELECT recordings.path,\n"
-			"  recordings.duration / 1000000000,\n"
+			"SELECT recordings.path\n"
+#ifdef USEEXT
+			"  , recordings.duration / 1000000000,\n"
 			"  songs.title\n"
+#endif
 			"FROM queue\n"
 			"INNER JOIN recordings ON recordings.id = queue.recording\n"
+#ifdef USEEXT
 			"INNER JOIN songs ON songs.id = recordings.song\n"
+#endif
 			"ORDER BY queue.id ASC LIMIT 1"
 		}
 	};
