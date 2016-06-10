@@ -24,21 +24,29 @@ struct client {
     fprintf(stderr, "%s: %s\n", msg, uv_err_name(status)); \
     exit(1);																							 \
   }
+#define LIT(s) s, (sizeof(s)-1)
 
-GHashTable* clients = NULL;
 
-uv_buf_t latest_song[] = {
+gint songs_played = 0;
+
+uv_buf_t http_session[] = {
+	{LIT("HTTP/1.0 200 OK\r\n"
+			"Content-Type: application/vnd.apple.mpegurl\r\n"
+			"\r\n"
+			"#EXTM3U\r\n\r\n")},
 	{LIT("#EXTINF:")},
 	{}, // track duration
-	{LIT(", ")}
+	{LIT(", ")},
 	{}, // track title
 	{LIT("\r\n")},
 	{}, // host://site/prefix/
 	{}, // filename
-	{"\r\n",2}
+	{LIT("\r\n\r\n")},
+	{}, // host://site:port/
+	{LIT("\r\n")}
 };
 
-enum { DURATION = 1, TITLE = 3, PREFIX = 5, FILENAME = 6 } ;
+enum { DURATION = 1, TITLE = 3, PREFIX = 5, FILENAME = 6, PLAYLIST_URI = 8 } ;
 
 void on_closed(uv_handle_t* handle) {
 	struct client* client = (struct client*)handle->data;
@@ -48,22 +56,19 @@ void on_closed(uv_handle_t* handle) {
 	g_free(client);
 }
 
-void listen_for_more(uv_write_t* req, int status) {
+void close_stuff(uv_write_t* req, int status) {
 	CHECK(status, "write");
 	if(uv_is_closing((uv_handle_t*)req->handle))
 		return;
-	struct client* client = (struct client*)req->handle->data;
-	if(FALSE==g_hash_table_insert(clients,client,client)) {
-		fprintf(stderr,"Warning: already had client in clients?\n");
-	}
+	uv_close((uv_handle_t*)req->handle, on_closed);
 }
 
 void write_latest(struct client* client) {
 	uv_write(&client->write_req,
 					 (uv_stream_t*)&client->handle,
-					 latest_song,
-					 sizeof(latest_song)/sizeof(uv_buf_t),
-					 listen_for_more);
+					 http_session,
+					 sizeof(http_session)/sizeof(http_session[0]),
+					 close_stuff);
 }
 
 void get_latest_song() {
@@ -75,21 +80,19 @@ void get_latest_song() {
 		return;
 	}
 
-	g_free(latest_song[DURATION].base);
-	g_free(latest_song[TITLE].base);
-	g_free(latest_song[FILENAME].base);
-	
 #define COPY_OVER(dest, src)																				\
 		latest_song[dest].len = PQgetlength(current_song,0,src);				\
-		latest_song[dest].base = g_malloc(latest_song[dest].len);				\
+		latest_song[dest].base = g_realloc(latest_song[dest].base,			\
+																			 latest_song[dest].len);			\
 		strncpy(latest_song[dest].base,PQgetvalue(current_song,0,src),	\
 						latest_song[dest].len);
 	COPY_OVER(DURATION,1);
 	COPY_OVER(TITLE, 2);
 #undef COPY_OVER
-	
+
+	g_free(latest_song[FILENAME].base);
 	char* path = PQgetvalue(current_song,0,0);
-char* base = strrchr(path,'/');
+	char* base = strrchr(path,'/');
 	if(base == NULL)
 		base = g_uri_escape_string(path,NULL,FALSE);
 	else
@@ -129,14 +132,7 @@ void after_write(uv_write_t* req, int status) {
 	write_latest(client);
 }
 
-#define LIT(s) s, (sizeof(s)-1)
-
 const uv_buf_t http_start = {
-	.base =
-	LIT("HTTP/1.0 200 OK\r\n"
-			"Content-Type: audio/mpegurl\r\n"
-			"\r\n"
-			"#EXTM3U\r\n\r\n")
 };
 
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
@@ -152,9 +148,27 @@ void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	guint8* where = strstr(client->buffer->data,"\r\n\r\n");
 	// wow is this cheap
 	if(where == NULL) return;
+	guint8* slastid = strstr(client->buffer->data,"GET /");
+	if(slastid != NULL) {
+		gint lastid = strtol(lastid,NULL,0x10);
+		if(lastid == current_id) {
+			// whoops, they already have this one.
+			// stall the connection until we get a new song.
+			g_hash_table_insert(waiters,client,client);
+			return;
+		}
+	}
 	g_byte_array_remove_range(client->buffer,
 														0,
 														where-client->buffer->data);
+
+	send_playlist(client);
+}
+void send_playlist(struct client* client) {
+	char buf[0x100];
+	snprintf(buf,0x100,"%x",current_id);
+	http_start[2].base = buf;
+
 	int r = uv_write(&client->write_req,
 									 handle,
 									 &http_start,
@@ -189,24 +203,36 @@ int main(int argc, char** argv) {
 	const char* host = getenv("host");
 	assert(host);
 	const char* prefix = getenv("prefix");
+
+	#define DOPRINTF(what, ...) latest_song[what].len = g_snprintf \
+			(NULL,0,																									 \
+			 format,																									 \
+			 __VA_ARG__)+1;																						 \
+	latest_song[what].base = g_malloc(latest_song[what].len);			 \
+	g_snprintf(latest_song[what].base,latest_song[what].len,			 \
+						 format,																						 \
+						 __VA_ARG__);
+
 	if(getenv("prefix")) {
 		format = "http://[%s]/%s/";
+		DOPRINTF(PREFIX,host,getenv("prefix"));
 	} else {
 		format = "http://[%s]/";
+		DOPRINTF(PREFIX,host);
 	}
-	latest_song[PREFIX].len = g_snprintf(NULL,0,
-																			 format,
-																			 host,prefix)+1;
-	latest_song[PREFIX].base = g_malloc(latest_song[PREFIX].len);
-	g_snprintf(latest_song[PREFIX].base,latest_song[PREFIX].len,
-						 format,
-						 host,prefix);
+
+	format = "http://[%s]:%d/";
+	DOPRINTF(PLAYLIST_URI,host,port);
+
 	preparation_t query[] = {
     {
       "getTopSongPath",
-			"SELECT recordings.path, recordings.duration, song.title FROM queue\n"
+			"SELECT recordings.path,\n"
+			"  recordings.duration / 1000000000,\n"
+			"  songs.title\n"
+			"FROM queue\n"
 			"INNER JOIN recordings ON recordings.id = queue.recording\n"
-			"INNER JOIN songs ON songs.id = queue.song\n"
+			"INNER JOIN songs ON songs.id = recordings.song\n"
 			"ORDER BY queue.id ASC LIMIT 1"
 		}
 	};

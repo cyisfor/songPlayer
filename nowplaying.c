@@ -23,7 +23,7 @@ static void surelink(const char*src, const char*dest) {
   assert(0==symlink(src,dest));
 }
 
-static const char* linkhere(const char* path, ssize_t pathlen, ssize_t* len) {
+static const char* getbasename(const char* path, ssize_t pathlen, ssize_t* len) {
   assert(path);
   const char* basename = path+pathlen-1;
   for(;;) {
@@ -37,9 +37,15 @@ static const char* linkhere(const char* path, ssize_t pathlen, ssize_t* len) {
   *len = pathlen - (basename - path);
   if(*len == 0) return NULL;
 
-  surelink(path,basename);
   return basename;
 }
+
+static const char* linkhere(const char* path, ssize_t pathlen, ssize_t* len) {
+	const char* basename = getbasename(path,pathlen,len);
+  surelink(path,basename);
+	return basename;
+}
+
 
 char* durationFormat(const char* value, ssize_t* len) {
   static char buf[0x100];
@@ -111,6 +117,19 @@ static void updateLink(void* udata) {
   WRITE(dest,"\">");
   write(dest,PQgetvalue(result,0,1),PQgetlength(result,0,1));
   WRITE(dest,"</a></p>\n");
+
+	int playlist = open("../playlist.m3u.temp",O_WRONLY|O_CREAT|O_TRUNC,0644);
+	assert(playlist > 0);
+	WRITE(playlist,
+				"http://[fcd9:e703:498e:5d07:e5fc:d525:80a6:a51c]/stuff/nowplaying/cache/");
+	write(playlist,basename,len);
+	WRITE(playlist,"\n");
+
+	WRITE(playlist,
+					"http://[fcd9:e703:498e:5d07:e5fc:d525:80a6:a51c]/stuff/nowplaying/playlist.m3u\n");
+	close(playlist);
+	assert(0==rename("../playlist.m3u.temp","../playlist.m3u"));
+	
   WRITE(dest,"<table id=\"info\">");
   int i;
   int cols = PQnfields(result);
@@ -139,6 +158,7 @@ static void updateLink(void* udata) {
   result = result2;
   int rows = PQntuples(result);
   if(rows > 0) {
+
     WRITE(dest,"<div>Last-played:<table id=\"played\">\n");
     for(i=0;i<rows;++i) {
       WRITE(dest,"  <tr");
@@ -146,7 +166,8 @@ static void updateLink(void* udata) {
         WRITE(dest," class=\"o\"");
       }
       WRITE(dest,"><td><a href=\"cache/");
-      basename = linkhere(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
+      basename = linkhere
+				(PQgetvalue(result,i,0),PQgetlength(result,i,0),&len);
       write(dest,basename,len);
       WRITE(dest,"\">");
       write(dest,PQgetvalue(result,i,1),PQgetlength(result,i,1));
@@ -154,7 +175,7 @@ static void updateLink(void* udata) {
       write(dest,PQgetvalue(result,i,2),PQgetlength(result,i,2));
       WRITE(dest,"</td></tr>\n");
     }
-    WRITE(dest,"</table></div>\n");
+		WRITE(dest,"</table></div>\n");
   }
 
   result = logExecPrepared(PQconn,"upcomingSongs",
@@ -225,8 +246,9 @@ int main(void) {
   prepareQueries(query);
 
   mkdir("/custom/lighttpd/www/stuff/nowplaying",0755);
-  mkdir("/custom/lighttpd/www/stuff/nowplaying/cache",0755);
-  chdir("/custom/lighttpd/www/stuff/nowplaying/cache");
+  chdir("/custom/lighttpd/www/stuff/nowplaying");
+	mkdir("cache",0755);
+  chdir("cache");
   updateLink(NULL);
   onNext(updateLink,NULL);
   exit(23);
