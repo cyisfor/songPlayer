@@ -50,10 +50,11 @@ void configInit(void) {
 }
 
 const char* configAt(const char* name) {
+  assert(configBase > 0);
   ssize_t len = strlen(name);
   assureSize(configBase+2+len);
-  memcpy(configLocation+configBase,name,len);
-  configLocation[configBase+len] = '\0';
+  memcpy(configLocation+configBase-1,name,len);
+  configLocation[configBase+len-1] = '\0';
   printf("mkfirl '%s'\n",configLocation);
 
   return configLocation;

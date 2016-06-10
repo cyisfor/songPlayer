@@ -2,6 +2,7 @@
 #include "preparation.h"
 #include "get_pid.h"
 #include "o/pause.glade.ch"
+#include "config.h"
 
 #include <gtk/gtk.h>
 #include <glib.h>
@@ -39,9 +40,12 @@ static void unpause(GtkWidget* top, void* nothing) {
 }
 
 int main(void) {
-  dolock();
+  configInit();
+  if(!declare_pid("pauser")) {
+	puts("already pausing");
+	return 1;
+  }
 
-  PQinit();
   gtk_init(NULL,NULL);
 
   GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);

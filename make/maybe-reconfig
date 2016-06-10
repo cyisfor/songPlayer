@@ -1,0 +1,12 @@
+#!/bin/sh
+if [[ -z "$REBUILD" ]]; then
+	echo please call this with TEMP, DEST and REBUILD set
+	exit 33
+fi
+
+if cmp -s $TEMP $DEST; then
+	rm $DEST
+else
+	mv $TEMP $DEST
+	touch $REBUILD
+fi

@@ -1,0 +1,1 @@
+INSERT INTO something (a,b) SELECT $1,$2 WHERE NOT EXISTS(SELECT * FROM something WHERE a = $1 AND b = $2);

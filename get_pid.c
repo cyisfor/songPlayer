@@ -43,7 +43,7 @@ bool declare_pid(const char* application_name) {
   const char* loc = get_pidloc();
   mkdir(loc,0700);
   chdir(loc);
-  int out = open(application_name,O_WRONLY|O_CREAT);
+  int out = open(application_name,O_WRONLY|O_CREAT,0600);
   if(0 != lockf(out, F_TLOCK, 0)) {
 	if(errno == EACCES || errno == EAGAIN) {
 	  close(out);

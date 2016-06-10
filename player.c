@@ -384,7 +384,7 @@ static void restartPlayer(int signal) {
 
 int main (int argc, char ** argv)
 {
-  PQinit();
+  configInit();
   if(!declare_pid("player")) {
 	puts("Player already found");
 	return 1;
@@ -394,7 +394,6 @@ int main (int argc, char ** argv)
   arguments = argv;
   signalsSetup();
   gst_init (NULL,NULL);
-  configInit();
   selectSetup();
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);

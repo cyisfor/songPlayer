@@ -1,0 +1,1 @@
+OK new plan. One process: two threads, the selector and the queuer, plus gstreamer. Selector is the main thread which runs g_main_loop. Uses synchronize.h to empty the queue. Listens to stdin to go next. (Rate can be a separate program.) Queuer uses synchronize.h and queues stuff up. postgresql is a separate process ofc. 
