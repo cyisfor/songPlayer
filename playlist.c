@@ -1,5 +1,6 @@
 #include "nextreactor.h"
 #include "pq.h"
+#include "preparation.h"
 
 #include <uv.h>
 #include <glib.h>
@@ -12,6 +13,7 @@ struct client {
 	uv_write_t write_req;
 	uv_tcp_t handle;
 	GByteArray* buffer;
+	uv_buf_t buf;
 };
 
 #define PORT 7892
@@ -29,6 +31,14 @@ uv_buf_t latest_song[] = {
 	{}, // filename
 	{"\r\n",2}
 };
+
+void on_closed(uv_handle_t* handle) {
+	struct client* client = (struct client*)handle->data;
+	g_hash_table_remove(clients,client);
+	g_free(client->buffer);
+	g_free(client->buf.base);
+	g_free(client);
+}
 
 void listen_for_more(uv_write_t* req, int status) {
 	CHECK(status, "write");
@@ -101,7 +111,18 @@ void after_write(uv_write_t* req, int status) {
 	write_latest(client);
 }
 
+#define LIT(s) s, (sizeof(s)-1)
+
+uv_buf_t http_start;
+
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
+	if(nread < 0) {
+		if(nread != UV_EOF) {
+			fprintf(stderr,"oops: %d:%s\n",nread,uv_err_name(nread));
+		}
+		uv_close((uv_handle_t*)handle, on_closed);
+		return;
+	}
 	struct client* client = (struct client*)handle->data;
 	client->buffer = g_byte_array_append(client->buffer, buf->base, nread);
 	guint8* where = strstr(client->buffer->data,"\r\n\r\n");
@@ -110,14 +131,9 @@ void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	client->buffer = g_byte_array_remove_range(client->buffer,
 																						 0,
 																						 where-client->buffer->data);
-	uv_buf_t response
-		uv_buf_init("HTTP/1.0 200 OK\r\n"
-								"Content-Type: audio/mpegurl\r\n"
-								"\r\n");
-														
 	int r = uv_write(&client->write_req,
 									 handle,
-									 response,
+									 &http_start,
 									 1,
 									 after_write);
 }
@@ -126,9 +142,11 @@ void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 void alloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
 	struct client* client = (struct client*)handle->data;
 	if(client->buf.base == NULL) {
-		*client->buf = uv_buf_init((char*)g_malloc(suggested), suggested);
+		client->buf.base = g_malloc(suggested);
+		client->buf.len = suggested;
 	}
-	*buf = *client->buf;
+	buf->base = client->buf.base;
+	buf->len = client->buf.len;
 }
 
 void on_connect(uv_stream_t* server_handle, int status) {
@@ -144,7 +162,6 @@ void on_connect(uv_stream_t* server_handle, int status) {
 #define S(derp) #derp
 
 int main(int argc, char** argv) {
-	assert(argc == 2);
 	const char* format;
 	const char* host = getenv("host");
 	const char* prefix = getenv("prefix");
@@ -156,27 +173,33 @@ int main(int argc, char** argv) {
 	latest_song[0].len = g_snprintf(NULL,0,
 																	 format,
 																	 host,prefix);
-	latest_song[0].data = g_malloc(latest_song[0].len);
-	g_snprintf(latest_song[0].data,latest_song[0].len,
+	latest_song[0].base = g_malloc(latest_song[0].len);
+	g_snprintf(latest_song[0].base,latest_song[0].len,
 						 format,
 						 host,prefix);
 
 	preparation_t query[] = {
     {
       "getTopSongPath",
-			"SELECT recordings.path FROM queue"
-			"INNER JOIN recordings ON recordings.id = queue.recording"
+			"SELECT recordings.path FROM queue "
+			"INNER JOIN recordings ON recordings.id = queue.recording "
 			"ORDER BY queue.id ASC LIMIT 1"
 		}
-	}
+	};
 
 	PQinit();
 	prepareQueries(query);
+
+	http_start = 
+		uv_buf_init(LIT("HTTP/1.0 200 OK\r\n"
+										"Content-Type: audio/mpegurl\r\n"
+										"\r\n"));
+														
 	
 	uv_tcp_t server;
 	int r = uv_tcp_init(uv_default_loop(), &server);
 	CHECK(r,"tcp_init");
 	r = uv_tcp_keepalive(&server,1,60);
 	CHECK(r,"tcp_keepalive");
-	onNext((void*)send_song,&server);
+	onNext((void*)broadcast_song,&server);
 }
