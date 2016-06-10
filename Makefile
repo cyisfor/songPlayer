@@ -8,7 +8,7 @@ MAKEFLAGS:=-s
 endif
 
 
-CFLAGS+=-g -fdiagnostics-color=always
+CFLAGS+=-g -fdiagnostics-color=always -Wall
 
 PROGRAMS:=player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\

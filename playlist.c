@@ -51,17 +51,21 @@ uv_buf_t http_session[] = {
 	{LIT("\r\n")}
 };
 
-enum { DURATION = 1,
-			 TITLE = 3,
-			 PREFIX = 5,
-			 FILENAME = 6,
-			 PLAYLIST_URI = 8,
-			 SONGS_PLAYED = 9
+enum { DURATION = 2,
+			 TITLE = 4,
+			 PREFIX = 6,
+			 FILENAME = 7,
+			 PLAYLIST_URI = 9,
+			 SONGS_PLAYED = 0xa
 };
+
+GPtrArray* waiters = NULL;
+
+
 
 void on_closed(uv_handle_t* handle) {
 	struct client* client = (struct client*)handle->data;
-	g_hash_table_remove(clients,client);
+	g_ptr_array_remove(waiters,client);
 	g_byte_array_free(client->buffer,TRUE);
 	g_free(client->buf.base);
 	g_free(client);
@@ -119,8 +123,6 @@ void get_latest_song() {
 						 ++songs_played);
 }
 
-GPtrArray* waiters = NULL;
-
 void broadcast_song(uv_tcp_t* server) {	
 	get_latest_song();
 
@@ -135,37 +137,36 @@ void broadcast_song(uv_tcp_t* server) {
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	if(nread < 0) {
 		if(nread != UV_EOF) {
-			fprintf(stderr,"oops: %d:%s\n",nread,uv_err_name(nread));
+			fprintf(stderr,"oops: %ld:%s\n",nread,uv_err_name(nread));
 		}
 		uv_close((uv_handle_t*)handle, on_closed);
 		return;
 	}
 	struct client* client = (struct client*)handle->data;
-	g_byte_array_append(client->buffer, buf->base, nread);
+	g_byte_array_append(client->buffer, (const guint8*)buf->base, nread);
 	guint8* where = strstr(client->buffer->data,"\r\n\r\n");
 	// wow is this cheap
 	if(where == NULL) return;
-	guint8* slastid = strstr(client->buffer->data,"GET /");
-	if(slastid != NULL) {
-		gint lastid = strtol(slastid,NULL,0x10);
-		// we're done with the headers, so remove
-		g_byte_array_remove_range(client->buffer,
+	guint8* slastid = strstr((const char*)client->buffer->data,"GET /");
+	if(slastid == NULL) {
+		uv_close((uv_handle_t*)handle,on_closed);
+		return;
+	}
+	slastid += sizeof("GET /")-1;
+	gint lastid = strtol(slastid,NULL,0x10);
+	printf("lastid %x %s\n",lastid,slastid);
+	// we're done with the headers, so remove
+	g_byte_array_remove_range(client->buffer,
 															0,
 															where-client->buffer->data);
 		
-		if(lastid == current_id) {
-			// whoops, they already have this one.
-			// stall the connection until we get a new song.
-			g_ptr_array_add(waiters,client);
-			return;
-		}
-		// the id is different, so send the playlist and don't wait.
-	} else {
-		// we're done with the headers, so remove
-		g_byte_array_remove_range(client->buffer,
-															0,
-															where-client->buffer->data);
+	if(lastid == songs_played) {
+		// whoops, they already have this one.
+		// stall the connection until we get a new song.
+		g_ptr_array_add(waiters,client);
+		return;
 	}
+	// the id is different, so send the playlist and don't wait.
 
 	send_playlist(client);
 }
@@ -200,11 +201,11 @@ int main(int argc, char** argv) {
 	#define DOPRINTF(what, ...) http_session[what].len = g_snprintf \
 			(NULL,0,																									 \
 			 format,																									 \
-			 __VA_ARG__)+1;																						 \
+			 __VA_ARGS__)+1;																						 \
 	http_session[what].base = g_malloc(http_session[what].len);			 \
 	g_snprintf(http_session[what].base,http_session[what].len,			 \
 						 format,																						 \
-						 __VA_ARG__);
+						 __VA_ARGS__);
 
 	if(getenv("prefix")) {
 		format = "http://[%s]/%s/";
@@ -215,7 +216,7 @@ int main(int argc, char** argv) {
 	}
 
 	format = "http://[%s]:%d/";
-	DOPRINTF(PLAYLIST_URI,host,port);
+	DOPRINTF(PLAYLIST_URI,host,PORT);
 
 	preparation_t query[] = {
     {
@@ -233,8 +234,7 @@ int main(int argc, char** argv) {
 	PQinit();
 	prepareQueries(query);
 
-	clients = g_hash_table_new(g_direct_hash,
-														 g_direct_equal);
+	waiters = g_ptr_array_sized_new(5);
 
 	uv_tcp_t server;
 	int r = uv_tcp_init(uv_default_loop(), &server);
