@@ -28,10 +28,17 @@ struct client {
 GHashTable* clients = NULL;
 
 uv_buf_t latest_song[] = {
+	{LIT("#EXTINF:")},
+	{}, // track duration
+	{LIT(", ")}
+	{}, // track title
+	{LIT("\r\n")},
 	{}, // host://site/prefix/
 	{}, // filename
 	{"\r\n",2}
 };
+
+enum { DURATION = 1, TITLE = 3, PREFIX = 5, FILENAME = 6 } ;
 
 void on_closed(uv_handle_t* handle) {
 	struct client* client = (struct client*)handle->data;
@@ -68,17 +75,27 @@ void get_latest_song() {
 		return;
 	}
 
-	latest_song[1].len = PQgetlength(current_song,0,0);
+	g_free(latest_song[DURATION].base);
+	g_free(latest_song[TITLE].base);
+	g_free(latest_song[FILENAME].base);
+	
+#define COPY_OVER(dest, src)																				\
+		latest_song[dest].len = PQgetlength(current_song,0,src);				\
+		latest_song[dest].base = g_malloc(latest_song[dest].len);				\
+		strncpy(latest_song[dest].base,PQgetvalue(current_song,0,src),	\
+						latest_song[dest].len);
+	COPY_OVER(DURATION,1);
+	COPY_OVER(TITLE, 2);
+#undef COPY_OVER
+	
 	char* path = PQgetvalue(current_song,0,0);
-	printf("uhhh %s\n",path);
-				 
-	char* base = strrchr(path,'/');
+char* base = strrchr(path,'/');
 	if(base == NULL)
 		base = g_uri_escape_string(path,NULL,FALSE);
 	else
 		base = g_uri_escape_string(base+1,NULL,FALSE);
-	latest_song[1].base = base;
-	latest_song[1].len = strlen(base);
+	latest_song[FILENAME].base = base;
+	latest_song[FILENAME].len = strlen(base);
 	PQcheckClear(current_song);
 }
 
@@ -114,7 +131,13 @@ void after_write(uv_write_t* req, int status) {
 
 #define LIT(s) s, (sizeof(s)-1)
 
-uv_buf_t http_start;
+const uv_buf_t http_start = {
+	.base =
+	LIT("HTTP/1.0 200 OK\r\n"
+			"Content-Type: audio/mpegurl\r\n"
+			"\r\n"
+			"#EXTM3U\r\n\r\n")
+};
 
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	if(nread < 0) {
@@ -164,35 +187,32 @@ void on_connect(uv_stream_t* server_handle, int status) {
 int main(int argc, char** argv) {
 	const char* format;
 	const char* host = getenv("host");
+	assert(host);
 	const char* prefix = getenv("prefix");
 	if(getenv("prefix")) {
 		format = "http://[%s]/%s/";
 	} else {
 		format = "http://[%s]/";
 	}
-	latest_song[0].len = g_snprintf(NULL,0,
-																	 format,
-																	 host,prefix)+1;
-	latest_song[0].base = g_malloc(latest_song[0].len);
-	g_snprintf(latest_song[0].base,latest_song[0].len,
+	latest_song[PREFIX].len = g_snprintf(NULL,0,
+																			 format,
+																			 host,prefix)+1;
+	latest_song[PREFIX].base = g_malloc(latest_song[PREFIX].len);
+	g_snprintf(latest_song[PREFIX].base,latest_song[PREFIX].len,
 						 format,
 						 host,prefix);
 	preparation_t query[] = {
     {
       "getTopSongPath",
-			"SELECT recordings.path FROM queue\n"
+			"SELECT recordings.path, recordings.duration, song.title FROM queue\n"
 			"INNER JOIN recordings ON recordings.id = queue.recording\n"
+			"INNER JOIN songs ON songs.id = queue.song\n"
 			"ORDER BY queue.id ASC LIMIT 1"
 		}
 	};
 
 	PQinit();
 	prepareQueries(query);
-
-	http_start =
-		uv_buf_init(LIT("HTTP/1.0 200 OK\r\n"
-										"Content-Type: audio/mpegurl\r\n"
-										"\r\n"));
 
 	clients = g_hash_table_new(g_direct_hash,
 														 g_direct_equal);
