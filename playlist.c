@@ -26,6 +26,10 @@ struct client {
   }
 #define LIT(s) s, (sizeof(s)-1)
 
+// can cache this between songs
+// but update the uv_buf_t len, not this!
+#define SONGS_PLAYED_DERP 0x100
+gchar songs_played_buf[SONGS_PLAYED_DERP];
 
 gint songs_played = 0;
 
@@ -43,10 +47,17 @@ uv_buf_t http_session[] = {
 	{}, // filename
 	{LIT("\r\n\r\n")},
 	{}, // host://site:port/
+	{songs_played_buf,0}, // "%x" printf songs_played counter
 	{LIT("\r\n")}
 };
 
-enum { DURATION = 1, TITLE = 3, PREFIX = 5, FILENAME = 6, PLAYLIST_URI = 8 } ;
+enum { DURATION = 1,
+			 TITLE = 3,
+			 PREFIX = 5,
+			 FILENAME = 6,
+			 PLAYLIST_URI = 8,
+			 SONGS_PLAYED = 9
+};
 
 void on_closed(uv_handle_t* handle) {
 	struct client* client = (struct client*)handle->data;
@@ -63,7 +74,7 @@ void close_stuff(uv_write_t* req, int status) {
 	uv_close((uv_handle_t*)req->handle, on_closed);
 }
 
-void write_latest(struct client* client) {
+void send_playlist(struct client* client) {
 	uv_write(&client->write_req,
 					 (uv_stream_t*)&client->handle,
 					 http_session,
@@ -81,59 +92,45 @@ void get_latest_song() {
 	}
 
 #define COPY_OVER(dest, src)																				\
-		latest_song[dest].len = PQgetlength(current_song,0,src);				\
-		latest_song[dest].base = g_realloc(latest_song[dest].base,			\
-																			 latest_song[dest].len);			\
-		strncpy(latest_song[dest].base,PQgetvalue(current_song,0,src),	\
-						latest_song[dest].len);
+		http_session[dest].len = PQgetlength(current_song,0,src);				\
+		http_session[dest].base = g_realloc(http_session[dest].base,			\
+																			 http_session[dest].len);			\
+		strncpy(http_session[dest].base,PQgetvalue(current_song,0,src),	\
+						http_session[dest].len);
 	COPY_OVER(DURATION,1);
 	COPY_OVER(TITLE, 2);
 #undef COPY_OVER
 
-	g_free(latest_song[FILENAME].base);
+	g_free(http_session[FILENAME].base);
 	char* path = PQgetvalue(current_song,0,0);
 	char* base = strrchr(path,'/');
 	if(base == NULL)
 		base = g_uri_escape_string(path,NULL,FALSE);
 	else
 		base = g_uri_escape_string(base+1,NULL,FALSE);
-	latest_song[FILENAME].base = base;
-	latest_song[FILENAME].len = strlen(base);
+	http_session[FILENAME].base = base;
+	http_session[FILENAME].len = strlen(base);
 	PQcheckClear(current_song);
+
+	http_session[SONGS_PLAYED].len =
+		snprintf(http_session[SONGS_PLAYED].base,
+						 SONGS_PLAYED_DERP,"%x",
+
+						 ++songs_played);
 }
 
-void broadcast_song(uv_tcp_t* server) {
+GPtrArray* waiters = NULL;
+
+void broadcast_song(uv_tcp_t* server) {	
 	get_latest_song();
-	// be sure clients is clear, before iterating through it
-	// in case uv_write immediately calls the callback
-	// (it doesn't, but just in case)
-	GHashTable* in_use = clients;
-	clients = g_hash_table_new(g_direct_hash,
-															 g_direct_equal);
 
-	if(in_use != NULL) {
-		g_hash_table_foreach(in_use,
-												 // sorcery, the key is the first arg
-												 // so don't care about arg 2, and 3
-												 (void*)write_latest,
-												 NULL);
-		g_hash_table_destroy(in_use);
-	}
+	// sorcery, the client is the first arg
+	// so don't care about arg 2
+	g_ptr_array_foreach(waiters,(void*)send_playlist,NULL);
+	
+	// clear out these waiters, since they were un-stalled
+	g_ptr_array_remove_range(waiters,0,waiters->len);
 }
-
-
-
-void after_write(uv_write_t* req, int status) {
-	CHECK(status, "write");
-	if(uv_is_closing((uv_handle_t*)req->handle))
-		return;
-	struct client* client = (struct client*)req->handle->data;
-	// we never even listen before there's a valid song to write
-	write_latest(client);
-}
-
-const uv_buf_t http_start = {
-};
 
 void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	if(nread < 0) {
@@ -150,32 +147,28 @@ void on_read(uv_stream_t* handle, ssize_t nread, const uv_buf_t * buf) {
 	if(where == NULL) return;
 	guint8* slastid = strstr(client->buffer->data,"GET /");
 	if(slastid != NULL) {
-		gint lastid = strtol(lastid,NULL,0x10);
+		gint lastid = strtol(slastid,NULL,0x10);
+		// we're done with the headers, so remove
+		g_byte_array_remove_range(client->buffer,
+															0,
+															where-client->buffer->data);
+		
 		if(lastid == current_id) {
 			// whoops, they already have this one.
 			// stall the connection until we get a new song.
-			g_hash_table_insert(waiters,client,client);
+			g_ptr_array_add(waiters,client);
 			return;
 		}
+		// the id is different, so send the playlist and don't wait.
+	} else {
+		// we're done with the headers, so remove
+		g_byte_array_remove_range(client->buffer,
+															0,
+															where-client->buffer->data);
 	}
-	g_byte_array_remove_range(client->buffer,
-														0,
-														where-client->buffer->data);
 
 	send_playlist(client);
 }
-void send_playlist(struct client* client) {
-	char buf[0x100];
-	snprintf(buf,0x100,"%x",current_id);
-	http_start[2].base = buf;
-
-	int r = uv_write(&client->write_req,
-									 handle,
-									 &http_start,
-									 1,
-									 after_write);
-}
-
 
 void alloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
 	struct client* client = (struct client*)handle->data;
@@ -204,12 +197,12 @@ int main(int argc, char** argv) {
 	assert(host);
 	const char* prefix = getenv("prefix");
 
-	#define DOPRINTF(what, ...) latest_song[what].len = g_snprintf \
+	#define DOPRINTF(what, ...) http_session[what].len = g_snprintf \
 			(NULL,0,																									 \
 			 format,																									 \
 			 __VA_ARG__)+1;																						 \
-	latest_song[what].base = g_malloc(latest_song[what].len);			 \
-	g_snprintf(latest_song[what].base,latest_song[what].len,			 \
+	http_session[what].base = g_malloc(http_session[what].len);			 \
+	g_snprintf(http_session[what].base,http_session[what].len,			 \
 						 format,																						 \
 						 __VA_ARG__);
 
