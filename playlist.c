@@ -30,7 +30,7 @@ GHashTable* clients = NULL;
 uv_buf_t latest_song[] = {
 	{}, // host://site/prefix/
 	{}, // filename
-	{"\n",1}
+	{"\r\n",2}
 };
 
 void on_closed(uv_handle_t* handle) {
