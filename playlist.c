@@ -37,6 +37,7 @@ gint songs_played = 0;
 
 #define INL "\n"
 
+#define PLAYERS_DONT_SUCK
 #ifdef PLAYERS_DONT_SUCK
 #define USEEXT
 #endif
@@ -44,11 +45,6 @@ gint songs_played = 0;
 uv_buf_t http_session[] = {
 	{LIT("HTTP/1.0 200 OK\r\n"
 			"Content-Type: audio/mpegurl\r\n"
-			 "Date: Fri, 10 Jun 2016 23:41:02 GMT\r\n"
-			 "Last-Modified: Fri, 10 Jun 2016 23:05:30 GMT\r\n"
-			 "ETag: \"2047657876\"\r\n"
-			 "Server: derp\r\n"
-
 			 "Content-Length: ")},
 	{length_buf, 0}, // content length
 	{LIT("\r\n\r\n"
@@ -81,7 +77,7 @@ uv_buf_t http_session[] = {
 
 #ifdef USEEXT
 enum { LENGTH = 1,
-			 DURATION = 5,
+			 DURATION = 4,
 			 TITLE = 6,
 			 PREFIX = 8,
 			 FILENAME = 9,
@@ -90,7 +86,7 @@ enum { LENGTH = 1,
 };
 
 #define BODY_FIELDS X(2) X(3) X(4) X(5) X(6) X(7) X(8) X(9) \
-	X(0xa) X(0xb) X(0xc) X(0xd) 
+	X(0xa) X(0xb) X(0xc) X(0xd) X(0xe)
 
 #else
 enum { LENGTH = 1,
@@ -154,9 +150,9 @@ void get_latest_song() {
 	char* path = PQgetvalue(current_song,0,0);
 	char* base = strrchr(path,'/');
 	if(base == NULL)
-		base = g_uri_escape_string(path,NULL,FALSE);
+		base = g_uri_escape_string(path,NULL,TRUE);
 	else
-		base = g_uri_escape_string(base+1,NULL,FALSE);
+		base = g_uri_escape_string(base+1,NULL,TRUE);
 	http_session[FILENAME].base = base;
 	http_session[FILENAME].len = strlen(base);
 	PQcheckClear(current_song);
@@ -176,8 +172,13 @@ void get_latest_song() {
 #define X(n) http_session[n].len +
 						 BODY_FIELDS
 #undef X
-					 // extra \r\n\r\n in there
-					 0 );
+#ifdef USEEXT
+						- 4
+						 // extra \r\n\r\n in there
+#else
+					 0
+#endif
+						 );
 }
 
 void broadcast_song(uv_tcp_t* server) {	
@@ -261,7 +262,7 @@ int main(int argc, char** argv) {
 			 format,																									 \
 			 __VA_ARGS__)+1;																						 \
 	http_session[what].base = g_malloc(http_session[what].len);			 \
-	g_snprintf(http_session[what].base,http_session[what].len,			 \
+	g_snprintf(http_session[what].base,http_session[what].len--,			 \
 						 format,																						 \
 						 __VA_ARGS__);
 
