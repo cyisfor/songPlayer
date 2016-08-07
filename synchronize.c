@@ -10,7 +10,7 @@ pthread_mutex_t queueLock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t _checkQueue = PTHREAD_COND_INITIALIZER;
 pthread_cond_t _songInQueue = PTHREAD_COND_INITIALIZER;
 
-#define DESIRED 0x10
+#define DESIRED 0x1
 uint8_t queueSize = 0;
 
 #ifdef SPAMMY

@@ -53,7 +53,7 @@ static PGresult* pickBestRecording(void) {
   int lengths[2];
   const int fmt[] = { 0, 0 };
   char* song;
- TRYAGAIN:
+
   result =
     logExecPrepared(PQconn,"bestSongScoreRange",
                    0,NULL,NULL,NULL,0);
@@ -72,7 +72,7 @@ static PGresult* pickBestRecording(void) {
   assert(pivotF >= 0 && pivotF <= 1);
   pivot = (maxScore - minScore) * pivotF + minScore;
   g_message("mean pivot is between %lf:%lf is %f",minScore,maxScore,pivot);
-  g_message("rand goes %lf to %lf %lf",randF,pivotF);
+  g_message("rand goes %lf to %lf",randF,pivotF);
 
   { 
       lengths[0] = snprintf(buf,0x100,"%f",pivot);
@@ -92,7 +92,7 @@ static PGresult* pickBestRecording(void) {
   pivotF = offsetCurve(randF);
   offsetpivot = num * pivotF;
   g_message("median offset is between 0:%lu is %d",num,offsetpivot);
-  g_message("median rand goes %lf to %lf %d",randF,pivotF);
+  g_message("median rand goes %lf to %lf",randF,pivotF);
 
   lengths[1] = snprintf(offbuf,0x100,"%d",offsetpivot);
 
@@ -320,7 +320,7 @@ static void* queueChecker(void* arg) {
   prepareQueries(queries);
   setNumQueued(getNumQueued());
 
-  setupOffsetCurve(0.9);
+  setupOffsetCurve(0.99);
 
   srand48(time(NULL));
 
