@@ -10,7 +10,7 @@ endif
 
 CFLAGS+=-g -fdiagnostics-color=always -Wall
 
-PROGRAMS:=player import replaygain_scanner scanner dscanner \
+PROGRAMS:=addalbum player import replaygain_scanner scanner dscanner \
 	best migrate next graph mode current enqueue\
 	testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make \
 	pause playlist

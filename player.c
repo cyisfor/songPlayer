@@ -75,7 +75,7 @@ print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
       fprintf(tagHack,"(%s . %s)\n", tag,
           (g_value_get_boolean (val)) ? "#t" : "#f");
     } else if (GST_VALUE_HOLDS_BUFFER (val)) {
-      fprintf(tagHack, "(%s . (buffer %u))", tag,
+      fprintf(tagHack, "(%s . (buffer %lu))", tag,
           gst_buffer_get_size (gst_value_get_buffer (val)));
     } else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
         GstDateTime* date = (GstDateTime*)g_value_get_boxed(val);
@@ -307,9 +307,6 @@ void playerPlay(void) {
     lastId = id;
   }
 
-  uint16_t len = strlen(recording);
-  int fmt = 0;
-
   rows = PQntuples(result);
   cols = PQnfields(result);
   PQassert(result,rows==1 && cols==5);
@@ -321,6 +318,7 @@ void playerPlay(void) {
   PQclear(result);
 }
 
+#ifdef USE_STDIN
 static gboolean on_input (GIOChannel *source,
                    GIOCondition condition,
                    gpointer data) {
@@ -368,6 +366,7 @@ static void watchInput(GMainLoop* loop) {
   }
   g_io_add_watch(in,G_IO_IN,(void*)on_input,loop);
 }
+#endif
 
 static void signalNext(int signal) {
   // this should execute in the main GTK thread (see signals.c)
@@ -475,7 +474,9 @@ int main (int argc, char ** argv)
 	  g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   }
 
-  //watchInput(loop);
+#ifdef USE_STDIN
+  watchInput(loop);
+#endif
 
   playerPlay();
 
