@@ -21,7 +21,6 @@ static void fakealloc(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
 static void reopen(uv_tcp_t* tcp, struct context* ctx);
 
 static void getsome(uv_stream_t* stream, ssize_t nread, const uv_buf_t* nothing) {
-  error(0,0,"UHH %p %p",stream,stream->data);
   if(nread == UV_EOF) {
     //PQclose(PQconn);
     error(0,EOF,"Connection lost.");

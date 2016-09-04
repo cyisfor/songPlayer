@@ -268,7 +268,10 @@ void queuePrepare(void) {
     { "rateByPlayer",
       "SELECT rate(0,1)" },
     { "resetRatings",
-      "DELETE FROM ratings"}
+      "DELETE FROM ratings"},
+		// used by command line queueing utilities
+		{ "insertIntoQueue",
+			"INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
   };
   prepareQueries(queries);
 }
@@ -305,8 +308,6 @@ static void* queueChecker(void* arg) {
       "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
     { "bestRecording",
       "SELECT recordings.id " FROM_BEST_RECORDING " AND (score >= $2 OR (score IS NULL AND $2 = 0.0)) ORDER BY score LIMIT 1" },
-    { "insertIntoQueue",
-      "INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
     { "getPath",
         "SELECT path FROM recordings WHERE id = $1" },
     { "updatePath",
