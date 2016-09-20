@@ -277,14 +277,13 @@ void queuePrepare(void) {
 }
 
 static void* queueChecker(void* arg) {
-    int truerand = open("/dev/random",O_RDONLY);
-    unsigned short seed16v[3];
-    assert(sizeof(seed16v)==sizeof(short)*3);
-    read(truerand,seed16v,sizeof(seed16v));
-    close(truerand);
-    seed48(seed16v);
-    memset(seed16v,0,sizeof(seed16v));
-
+	int truerand = open("/dev/random",O_RDONLY);
+	unsigned short seed16v[3];
+	assert(sizeof(seed16v)==sizeof(short)*3);
+	read(truerand,seed16v,sizeof(seed16v));
+	close(truerand);
+	seed48(seed16v);
+	memset(seed16v,0,sizeof(seed16v));
 
   assert(myPQtest==NULL);
   PQinit();

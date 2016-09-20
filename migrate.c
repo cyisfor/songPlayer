@@ -34,8 +34,6 @@ static int Checkclear(PGresult* result) {
   return test==PGRES_TUPLES_OK || test == PGRES_COMMAND_OK;
 }
 
-static void measureSingleTrackRecordings(void);
-
 struct schema_version versions[] = {
   { 1,
     {
@@ -44,6 +42,10 @@ struct schema_version versions[] = {
   { 2,
     {
       { FROMFILE, { .path = "selins.sql" }},
+      endCommands}},
+  { 3,
+    {
+      { FROMFILE, { .path = "multiqueue.sql" }},
       endCommands}},
 };
 
@@ -76,6 +78,9 @@ static int runCommand(struct command* command) {
   case CODE:
     puts("code");
     return command->data.generator();
+	default:
+		puts("uhhh");
+		abort();
   }
 }
 
@@ -97,7 +102,7 @@ int main(void) {
       struct command* command = version->commands;
       for(;command;++command) {
         if(command->type==DONE) break;
-        if(!runCommand(command)) goto SKIP;
+        if(!runCommand(command)) continue;
       }
       oldVersion = version->version;
       Checkclear(PQexecParams(PQconn, "BEGIN",
@@ -112,8 +117,7 @@ int main(void) {
                            1,NULL,values,&len,&fmt,0));
       Checkclear(PQexecParams(PQconn, "COMMIT",
                            0,NULL,NULL,NULL,NULL,0));
-    SKIP:
-      0;
     }
   }
+	return 0;
 }
