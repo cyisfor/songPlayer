@@ -1,3 +1,8 @@
 #include <gtk/gtk.h>
 
-gboolean pause_toggle(GtkWidget* top, GdkEventButton* e, gpointer udata);
+struct pause_toggle_stuff {
+	GtkImage* image;
+	gboolean paused;
+} *pts;
+
+gboolean pause_toggle(GtkWidget* top, GdkEventButton* e, pts pts);
