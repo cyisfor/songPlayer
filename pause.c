@@ -34,18 +34,15 @@ static void dolock(void) {
 
 int pid = -1;
 
-static void unpause(GtkWidget* top, void* nothing) {
-  kill(pid,SIGCONT);
-  exit(0);
-}
-
 int main(void) {
   configInit();
   if(!declare_pid("pauser")) {
 	puts("already pausing");
 	return 1;
   }
-
+  int pid = get_pid("player",sizeof("player")-1);
+  if(pid < 0) return 1;
+	
   gtk_init(NULL,NULL);
 
   GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
@@ -53,11 +50,29 @@ int main(void) {
 
   gtk_window_stick(GTK_WINDOW(top));
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
-  int pid = get_pid("player",sizeof("player")-1);
-  if(pid < 0) return 1;
-  //printf("stop %d\n",pid);
-  kill(pid, SIGSTOP);
-  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(unpause),NULL);
+
+	
+static void toggle(GtkWidget* top, GdkEventButton* e, gpointer udata) {
+	if(e->state & GDK_CONTROL_MASK) {
+		gtk_window_begin_move_drag(GTK_WINDOW(top), e->button, e->x_root, e->y_root, e->time);
+		return;
+	}
+	if(stopped) {
+		kill(pid,SIGCONT);
+		stopped = false;
+		gtk_image_set_from_stock(image, "gtk-stop", GTK_ICON_SIZE_BUTTON);
+	} else {
+		//printf("stop %d\n",pid);
+		kill(pid, SIGSTOP);
+		stopped = true;
+		gtk_image_set_from_stock(image, "gtk-yes", GTK_ICON_SIZE_BUTTON);
+	}
+
+  exit(0);
+}
+
+  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(toggle),NULL);
+	
   gtk_widget_show_all(top);
   gtk_main();
 }
