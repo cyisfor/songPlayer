@@ -18,11 +18,15 @@ static GtkWidget* new_instance(LXPanel* panel, config_setting_t *settings) {
 
 	GtkBuilder* builder = gtk_builder_new();
 	gtk_builder_add_from_string(builder,(gchar*)gladeFile,gladeFile_length,NULL);
-	pts->image = GTK_IMAGE(gtk_builder_get_object(builder,"image"));
+	GtkObject* o = gtk_builder_get_object(builder,"image");
+	assert(o != NULL);
+	pts->image = GTK_IMAGE(o);
 	g_object_unref(builder);
 	pts->paused = FALSE;
-	g_signal_connect(pts->image,"button-release-event",G_CALLBACK(pause_toggle), pts);
-	return GTK_WIDGET(pts->image);
+	GtkWidget* p = gtk_event_box_new();
+	g_signal_connect(p,"button-release-event",G_CALLBACK(pause_toggle), pts);
+	gtk_container_add(GTK_CONTAINER(p),GTK_WIDGET(pts->image));
+	return p;
 }
 
 FM_DEFINE_MODULE(lxpanel_gtk, pauser);
