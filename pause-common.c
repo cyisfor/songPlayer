@@ -2,15 +2,7 @@
 #include "get_pid.h"
 
 gboolean pause_toggle(GtkWidget* top, GdkEventButton* e, gpointer udata) {
-/* only in window not lxplugin
-	if(e->state & GDK_CONTROL_MASK) {
-		gtk_window_begin_move_drag(GTK_WINDOW(top), e->button, e->x_root, e->y_root, e->time);
-		return FALSE;
-	}
-	if(e->state & GDK_SHIFT_MASK) {
-		gtk_main_quit();
-		return TRUE;
-	}*/
+if(e->button > 1) return;
   int pid = get_pid("player",sizeof("player")-1);
 	if(stopped) {
 		kill(pid,SIGCONT);

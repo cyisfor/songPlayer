@@ -15,3 +15,13 @@ static GtkWidget* new_instance(LXPanel* panel, config_setting_t *settings) {
 	image = GTK_IMAGE(gtk_builder_get_object(builder,"image"));
 	gtk_builder_destroy(builder);
 }
+
+FM_DEFINE_MODULE(lxpanel_gtk, clock);
+
+LXPanelPluginInit fm_module_init_lxpanel_gtk = {
+	.new_instance = new_instance,
+	.init = init,
+	.button_press_event = pause_toggle,
+	.name = "Pause Player",
+	.description = "Pause the currently running song player.",
+};
