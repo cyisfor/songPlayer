@@ -3,8 +3,8 @@ o/%.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
 o/%.glade.ch: %.glade.xml
-	$(call status, MAKEARRAY, $*)
-	name=gladeFile ../data_to_header_string/pack $< >$@.temp
+	$(call status, EMBED_GLADE, $*)
+	name=gladeFile ../data_to_header_string/pack <$< >$@.temp
 	mv $@.temp $@
 
 %.so:
