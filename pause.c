@@ -59,7 +59,19 @@ int main(void) {
 		return TRUE;
 	}
 
-  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(toggle),top);
+#if INITAL_DRAG
+	gulong first_configure = 0;
+	gboolean drag_it(GtkWidget* top, GdkEventConfigure* e, gpointer udata) {
+		gtk_window_begin_move_drag(GTK_WINDOW(top), 0, e->x, e->y, time(NULL));
+		g_signal_handler_disconnect(top, first_configure);
+		return FALSE;
+	}
+	first_configure = g_signal_connect(G_OBJECT(top),"configure-event",G_CALLBACK(drag_it),NULL);
+#else
+	// just edit the source to configure
+	gtk_window_move(GTK_WINDOW(top),0,300-32);
+#endif
+  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(toggle),NULL);
 	
   gtk_widget_show_all(top);
   gtk_main();
