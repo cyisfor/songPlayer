@@ -2,12 +2,16 @@ o/%.o: %.c
 	$(call status,COMPILE, $*)
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
+o/%.o: %.c
+	$(call status,COMPILE_SHARED, $*)
+	$(CC) -fpic $(CFLAGS) -c -o $@ $(filter %.c,$^)
+
 o/%.glade.ch: %.glade.xml
 	$(call status, EMBED_GLADE, $*)
 	name=gladeFile ../data_to_header_string/pack <$< >$@.temp
 	mv $@.temp $@
 
-bin/%.so:
+lib/%.so: | lib
 	$(call status,LIBRARY, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^)
 
@@ -22,7 +26,7 @@ deps/%.d: %.c
 
 $(PROGLOCS): | bin
 
-bin:
+lib bin:
 	mkdir $@
 
 $(PROGLOCS): bin/%: o/%.o

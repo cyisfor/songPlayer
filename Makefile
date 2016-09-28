@@ -10,7 +10,7 @@ endif
 
 CFLAGS+=-g -fdiagnostics-color=always -Wall
 
-PROGRAMS:=replay addalbum player import replaygain_scanner scanner dscanner	best migrate next graph mode current enqueue testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make pause playlist lxpause.so
+PROGRAMS:=replay addalbum player import replaygain_scanner scanner dscanner	best migrate next graph mode current enqueue testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make pause playlist
 
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
 
@@ -19,10 +19,12 @@ REBUILD=o/.rebuild
 all:: $(REBUILD) make/config.mk build
 	$(call status, DONE)
 
-build: $(PROGLOCS)
+build: $(PROGLOCS) lib/lxpause.so
 
-bin/lxpause.so: CFLAGS += `pkg-config --cflags lxpanel`
-bin/lxpause.so: LDFLAGS += `pkg-config --libs lxpanel`
+lxpause.so: lxpause.so.c o/get_pid.os o/pq.os o/config.os o/preparation.os
+	gcc -shared -fPIC $(CFLAGS) -o $@ $^ $(LDFLAGS)
+lxpause.so: CFLAGS = `pkg-config --cflags lxpanel gtk+-2.0`
+lxpause.so: LDFLAGS = `pkg-config --libs lxpanel gtk+-2.0`
 
 include make/implicit.mk
 
