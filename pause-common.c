@@ -1,7 +1,7 @@
 #include "pause-common.h"
 #include "get_pid.h"
 
-gboolean pause_toggle(GtkWidget* top, GdkEventButton* e, pts self) {
+gboolean pause_toggle(GtkWidget* top, GdkEventButton* e, struct pause_toggle_state* self) {
 	if(e->button > 1) return FALSE;
   int pid = get_pid("player",sizeof("player")-1);
 	if(self->stopped) {

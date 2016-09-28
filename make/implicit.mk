@@ -7,7 +7,7 @@ o/%.glade.ch: %.glade.xml
 	name=gladeFile ../data_to_header_string/pack <$< >$@.temp
 	mv $@.temp $@
 
-%.so:
+bin/%.so:
 	$(call status,LIBRARY, $*)
 	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^)
 
