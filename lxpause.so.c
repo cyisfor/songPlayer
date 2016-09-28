@@ -1,9 +1,12 @@
-#include <lxpanel/plugin.h>
 #include "o/pause.glade.ch"
 #include "pause-common.h"
 #include "config.h"
 
+#include <lxpanel/plugin.h>
+#include <stdlib.h>
+
 static void init(void) {
+	exit(97);
 	configInit();
 }
 
@@ -26,7 +29,6 @@ FM_DEFINE_MODULE(lxpanel_gtk, pauser);
 
 LXPanelPluginInit fm_module_init_lxpanel_gtk = {
 	.new_instance = new_instance,
-	.init = init,
 	.name = "Pause Player",
 	.description = "Pause the currently running song player.",
 };

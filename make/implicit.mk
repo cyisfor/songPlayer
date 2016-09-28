@@ -2,7 +2,7 @@ o/%.o: %.c
 	$(call status,COMPILE, $*)
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
-o/%.o: %.c
+o/%.os: %.c
 	$(call status,COMPILE_SHARED, $*)
 	$(CC) -fpic $(CFLAGS) -c -o $@ $(filter %.c,$^)
 

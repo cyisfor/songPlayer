@@ -21,11 +21,6 @@ all:: $(REBUILD) make/config.mk build
 
 build: $(PROGLOCS) lib/lxpause.so
 
-lxpause.so: lxpause.so.c o/get_pid.os o/pq.os o/config.os o/preparation.os
-	gcc -shared -fPIC $(CFLAGS) -o $@ $^ $(LDFLAGS)
-lxpause.so: CFLAGS = `pkg-config --cflags lxpanel gtk+-2.0`
-lxpause.so: LDFLAGS = `pkg-config --libs lxpanel gtk+-2.0`
-
 include make/implicit.mk
 
 make/config.mk: | o/

@@ -25,7 +25,6 @@ int get_pid(const char* application_name, ssize_t len) {
   assert(0==chdir(loc));
   int inp = open(application_name,O_RDONLY);
   if(inp < 0) return inp;
-  int ret = 0;
   char buf[0x100];
   int amt = read(inp,buf,0x100);
   buf[amt] = '\0';
