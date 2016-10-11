@@ -55,7 +55,7 @@ static PGresult* pickBestRecording(void) {
   char* song;
 
   result =
-    logExecPrepared(PQconn,"bestSongScoreRange",
+    prepare_exec(PQconn,"bestSongScoreRange",
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
@@ -78,7 +78,7 @@ static PGresult* pickBestRecording(void) {
       lengths[0] = snprintf(buf,0x100,"%f",pivot);
       const char* values[] = { buf };
       result =
-        logExecPrepared(PQconn,"bestSongRange",
+        prepare_exec(PQconn,"bestSongRange",
                        1,values,lengths,fmt,0);
   }
   rows = PQntuples(result);
@@ -98,7 +98,7 @@ static PGresult* pickBestRecording(void) {
 
   { const char* values[] = { buf, offbuf };
       result =
-          logExecPrepared(PQconn,"bestSong",
+          prepare_exec(PQconn,"bestSong",
                   2,values,lengths,fmt,0);
   }
   rows = PQntuples(result);
@@ -113,7 +113,7 @@ static PGresult* pickBestRecording(void) {
 
   { const char* values[] = { song };
     result2 =
-      logExecPrepared(PQconn,"bestRecordingScoreRange",
+      prepare_exec(PQconn,"bestRecordingScoreRange",
                      1,values,lengths,fmt,0);
   }
   rows = PQntuples(result2);
@@ -135,7 +135,7 @@ static PGresult* pickBestRecording(void) {
     const char* values[2] = { song, buf };
 
     result2 =
-      logExecPrepared(PQconn,"bestRecording",
+      prepare_exec(PQconn,"bestRecording",
                      2,values,lengths,fmt,0);
   }
 
@@ -158,9 +158,9 @@ static uint8_t getNumQueued(void);
 volatile uint8_t queueInterrupted = 0;
 
 void queueRescore(void) {
-    PQcheckClear(logExecPrepared(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
-    PQcheckClear(logExecPrepared(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
-    PQcheckClear(logExecPrepared(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
 }
 
 bool try_to_find(const char* path, const char* recording, int rlen) {
@@ -175,7 +175,7 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 	g_warning("trying place %s", fmtderp);
     if(0==stat(buf,&derp)) {
       g_warning("found %s in %s\n",path,buf);
-      PQcheckClear(logExecPrepared(PQconn,"updatePath", 
+      PQcheckClear(prepare_exec(PQconn,"updatePath", 
   	2,parameters,len,fmt,0));
       return true;
     }
@@ -209,14 +209,14 @@ TRYAGAIN:
       int len[] = { PQgetlength(result,0,0), sizeof("path not found") };
       const int fmt[] = { 0, 0 };
       struct stat buf;
-      PGresult* exists = logExecPrepared(PQconn,"getPath",
+      PGresult* exists = prepare_exec(PQconn,"getPath",
               1,parameters,len,fmt,0);
       if(!PQgetvalue(exists,0,0) ||
             (0!=stat(PQgetvalue(exists,0,0),&buf))) {
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
             if(false==try_to_find(PQgetvalue(exists,0,0),parameters[0],len[0])) {
               PQclear(exists);
-              PQcheckClear(logExecPrepared(PQconn,"blacklist",
+              PQcheckClear(prepare_exec(PQconn,"blacklist",
 										   2,parameters,len,fmt,0));
               PQclear(result);
               return queueHighestRated();
@@ -231,7 +231,7 @@ TRYAGAIN:
   int len[] =  { strlen(parameters[0]) };
   const int fmt[] = { 0 };
   PGresult* result2 =
-    logExecPrepared(PQconn,"insertIntoQueue",
+    prepare_exec(PQconn,"insertIntoQueue",
                    1,parameters,len,fmt,0);
   PQclear(result);
   PQassert(result2,(long int)result2);
@@ -243,7 +243,7 @@ TRYAGAIN:
 
 static uint8_t getNumQueued(void) {
   PGresult* result =
-    logExecPrepared(PQconn,"numQueued",
+    prepare_exec(PQconn,"numQueued",
                    0,NULL,NULL,NULL,0);
   int rows = PQntuples(result);
   int cols = PQnfields(result);
@@ -256,7 +256,7 @@ static uint8_t getNumQueued(void) {
 }
 
 static void expireProblems(void) {
-    PQclear(logExecPrepared(PQconn,"expireProblems",
+    PQclear(prepare_exec(PQconn,"expireProblems",
                 0,NULL,NULL,NULL,0));
 }
 
@@ -346,7 +346,7 @@ void enqueue(char* id) {
     int len[] = {strlen(id)};
     const int fmt[] = { 0 };
     PGresult* result = 
-        logExecPrepared(PQconn,"insertIntoQueue",
+        prepare_exec(PQconn,"insertIntoQueue",
                    1,parameters,len,fmt,0);
     PQassert(result,(long int)result);
     PQclear(result);

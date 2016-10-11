@@ -16,11 +16,11 @@
 
 void selectNext(void) {
   PGresult *result =
-    logExecPrepared(PQconn,"popTopSong",
+    prepare_exec(PQconn,"popTopSong",
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
   PQclear(result);
-  PQclear(logExecPrepared(PQconn,"notifyNext",
+  PQclear(prepare_exec(PQconn,"notifyNext",
                           0,NULL,NULL,NULL,0));
 
   songOutOfQueue();
@@ -28,7 +28,7 @@ void selectNext(void) {
 
 void selectDone(void) {
   PGresult *result =
-    logExecPrepared(PQconn,"currentSongWasPlayed",
+    prepare_exec(PQconn,"currentSongWasPlayed",
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_TUPLES_OK);
   PQclear(result);

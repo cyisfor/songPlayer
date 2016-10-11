@@ -283,7 +283,7 @@ void playerPlay(void) {
   for(;;) {
       waitUntilSongInQueue();
       result =
-          logExecPrepared(PQconn,"getTopRecording",
+          prepare_exec(PQconn,"getTopRecording",
                          0,NULL,NULL,NULL,0);
       rows = PQntuples(result);
       if(rows>0) break;

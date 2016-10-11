@@ -146,4 +146,12 @@ PGresult *logExecPrepared(PGconn *conn,
     fflush(stmtLog);
     return res;
 }
+
+bool pq_needed_reset(void) {
+	if(PQstatus(PQconn) == CONNECTION_OK) return false;
+	do {
+		PQreset(PQconn);
+	} while(PQstatus(PQconn) != CONNECTION_OK);
+	return true;
+}
 #endif

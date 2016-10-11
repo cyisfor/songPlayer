@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 		const char* values[] = { argv[i] };
 		const int lengths[] = { strlen(argv[i]) };
 		const int fmt[] = { 0 };
-		logExecPrepared(PQconn,"addAlbum",
+		prepare_exec(PQconn,"addAlbum",
 										1,values,lengths,fmt,0);
 	}
 	
