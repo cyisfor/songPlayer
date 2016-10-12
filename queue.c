@@ -263,10 +263,10 @@ static uint8_t getNumQueued(void) {
   int cols = PQnfields(result);
   PQassert(result,rows>=1 && cols==1);
   char* end;
-  uint8_t numQueued = strtol(PQgetvalue(result,0,0),&end,10);
-  g_message("Num queued is now %d",numQueued);
+  uint8_t num = strtol(PQgetvalue(result,0,0),&end,10);
+  g_message("Num queued is now %d",num);
   PQclear(result);
-  return numQueued;
+  return num;
 }
 
 static void expireProblems(void) {

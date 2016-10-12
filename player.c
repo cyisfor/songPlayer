@@ -411,7 +411,7 @@ int main (int argc, char ** argv)
   }
   onSignal(SIGINT,done_quit);
   //onSignal(SIGQUIT,done_quit);
-  onSignal(SIGTERM,done_quit);
+  //onSignal(SIGTERM,done_quit);
   
   pipeline = gst_pipeline_new ("pipeline");
 

@@ -66,7 +66,7 @@ o/:
 	mkdir $@
 
 $(REBUILD): | o/
-	echo touch $@
+	touch $@
 
 deps/:
 	$(call status, MKDIR, $@)
@@ -82,5 +82,5 @@ o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make
 	$(call status, FIELDING, nowplaying)
 	./bin/nowplaying-make <nowplaying.fields.conf >$@.temp
 	mv $@.temp $@
-
+.SECONDARY: $(REBUILD)
 .PHONY: clean all configure build

@@ -8,14 +8,14 @@ struct preparation {
 	bool dirty;
 };
 
-preparation memory = NULL;
+preparation* memory = NULL;
 int memn = 0;
 
 bool prepare_needed_reset(void) {
 	if(!pq_needed_reset()) return false;
 	int i;
 	for(i=0;i<memn;++i) {
-		memory[i].dirty = true;
+		memory[i]->dirty = true;
 	}
 	return true;
 }
@@ -52,11 +52,14 @@ PGresult *prepare_exec(preparation self,
 
 preparation prepare(const char* query) {
 	++memn;
-	memory = realloc(memory,sizeof(struct preparation)*(memn));
+	memory = realloc(memory,sizeof(preparation)*(memn));
 	char buf[0x100] = "P";
 	snprintf(buf+1,0x100-1,"%x",memn);
-	memory[memn-1].name = strdup(buf);
-	memory[memn-1].query = query;
-	memory[memn-1].dirty = true;
-	return &memory[memn - 1];
+	// have to malloc separately or the pointer we return will be invalid after the next realloc!
+	preparation self = malloc(sizeof(struct preparation));
+	self->name = strdup(buf);
+	self->query = query;
+	self->dirty = true;
+	memory[memn-1] = self;
+	return self;
 }
