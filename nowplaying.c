@@ -52,21 +52,25 @@ char* durationFormat(const char* value, ssize_t* len) {
   unsigned long duration = atol(value) / 1000000000;
   if(duration > 60) {
     int seconds = duration % 60;
-    int moff = snprintf(buf, 0x100, "%um",duration / 60);
+    int moff = snprintf(buf, 0x100, "%lum",duration / 60);
     if(seconds) {
-      *len = moff + snprintf(buf+moff,0x100-moff," %us",seconds);
+      *len = moff + snprintf(buf+moff,0x100-moff," %ds",seconds);
     } else {
       *len = moff;
     }
   } else {
-    *len = snprintf(buf,0x100,"%us",duration);
+    *len = snprintf(buf,0x100,"%lus",duration);
   }
   return buf;
 }
 
+preparation getTopSongPath = NULL;
+preparation getHistory = NULL;
+preparation upcomingSongs = NULL;
+
 static void updateLink(void* udata) {
   PGresult* result =
-    logExecPrepared(PQconn,"getTopSongPath",
+    prepare_exec(getTopSongPath,
                     0,NULL,NULL,NULL,0);
   if(PQntuples(result) == 0) {
     PQcheckClear(result);
@@ -74,7 +78,7 @@ static void updateLink(void* udata) {
   }
 
   PGresult* result2 =
-    logExecPrepared(PQconn,"getHistory",
+    prepare_exec(getHistory,
                     0,NULL,NULL,NULL,0);
 
   const char destpath[] = "../index.html.temp";
@@ -94,11 +98,11 @@ static void updateLink(void* udata) {
   printf("ummmm duration %lu elapsed %lu now %lu last %lu left %lu\n",
          duration,elapsed,time(NULL),last,left);
   char refresh[0x10];
-  write(dest,refresh,snprintf(refresh,0x10,"%u",left + 72));
+  write(dest,refresh,snprintf(refresh,0x10,"%ld",left + 72));
   WRITE(dest,"\"/>");
   WRITE(dest,"<script type=\"text/javascript\">\n");
   WRITE(dest,"var finished = new Date(");
-  write(dest,refresh,snprintf(refresh,0x10,"%u",last+duration+72));
+  write(dest,refresh,snprintf(refresh,0x10,"%ld",last+duration+72));
   WRITE(dest,"000);\n"
         "var left = finished - new Date();\n"
         "if(left > 1000) {\n"
@@ -178,7 +182,7 @@ static void updateLink(void* udata) {
 		WRITE(dest,"</table></div>\n");
   }
 
-  result = logExecPrepared(PQconn,"upcomingSongs",
+  result = prepare_exec(upcomingSongs,
                            0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   if(rows > 0) {
@@ -212,10 +216,9 @@ static void updateLink(void* udata) {
 }
 
 int main(void) {
-  preparation_t query[] = {
-    {
-      "getTopSongPath",
-      "SELECT recordings.path, "
+  PQinit();
+	getTopSongPath = prepare
+		("SELECT recordings.path, "
 	  "songs.title, "
 #include "o/nowplaying.fields.ch"
       "FROM queue "
@@ -223,27 +226,22 @@ int main(void) {
       "INNER JOIN songs ON recordings.song = songs.id "
       "LEFT OUTER JOIN albums ON recordings.album = albums.id "
       "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-      "ORDER BY queue.id ASC LIMIT 1"},
-    { "upcomingSongs",
-      "SELECT recordings.path, songs.title "
+      "ORDER BY queue.id ASC LIMIT 1");
+	upcomingSongs = prepare
+		("SELECT recordings.path, songs.title "
       "FROM queue "
       "INNER JOIN recordings ON recordings.id = queue.recording "
       "INNER JOIN songs ON recordings.song = songs.id "
-      "ORDER BY queue.id ASC OFFSET 1"},
-    {
-      "getHistory",
-      "SELECT recordings.path,songs.title,history.played "
-      "FROM history "
-      "INNER JOIN recordings ON recordings.id = history.recording "
-      "INNER JOIN songs ON recordings.song = songs.id "
-      "LEFT OUTER JOIN albums ON recordings.album = albums.id "
-      "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-      "ORDER BY played desc LIMIT 16"
-    }
-  };
-  PQinit();
+      "ORDER BY queue.id ASC OFFSET 1");
+	getHistory = prepare
+		("SELECT recordings.path,songs.title,history.played "
+		 "FROM history "
+		 "INNER JOIN recordings ON recordings.id = history.recording "
+		 "INNER JOIN songs ON recordings.song = songs.id "
+		 "LEFT OUTER JOIN albums ON recordings.album = albums.id "
+		 "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+		 "ORDER BY played desc LIMIT 16");
 
-  prepareQueries(query);
 
   mkdir("/custom/lighttpd/www/stuff/nowplaying",0755);
   chdir("/custom/lighttpd/www/stuff/nowplaying");

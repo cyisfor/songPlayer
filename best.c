@@ -11,35 +11,34 @@
 #define SONG_COLUMNS "songs.id"
 #endif
 
-void main(int argc, char** argv) {
+int main(int argc, char** argv) {
     if(argc<2) exit(1);
     double maxDuration = strtod(argv[1],NULL) * 3600; // hours -> seconds
-    preparation_t queries[] = {
-        { "noTime",
-            "delete from connections where red = 1" },
-        { "resetRatings",
-            "DELETE FROM ratings" },
-        { "doRate",
-            "select rate(0,100)" },
-        { "zeroRated",
-            "insert into ratings (id,score) select songs.id,0 from songs left outer join ratings on ratings.id = songs.id where ratings.id IS NULL" },
-        { "listSongs",
-"select " SONG_COLUMNS " from songs inner join ratings on songs.id = ratings.id order by score+10*random() DESC" },
-        { "aRecording",
-            "SELECT path,duration FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1" },
-    };
     PQinit();
-    prepareQueries(queries);
+		
+		preparation noTime = prepare
+			("delete from connections where red = 1");
+		preparation resetRatings = prepare
+			("DELETE FROM ratings");
+		preparation doRate = prepare
+			("select rate(0,100)");
+		preparation zeroRated = prepare
+			("insert into ratings (id,score) select songs.id,0 from songs left outer join ratings on ratings.id = songs.id where ratings.id IS NULL");
+		preparation listSongs = prepare
+			("select " SONG_COLUMNS " from songs inner join ratings on songs.id = ratings.id order by score+10*random() DESC");
+		preparation aRecording = prepare
+			("SELECT path,duration FROM recordings WHERE song = $1 ORDER BY random() LIMIT 1");
+
     PQbegin();
-    PQcheckClear(logExecPrepared(PQconn,"noTime",
+    PQcheckClear(prepare_exec(noTime,
                  0,NULL,NULL,NULL,0));
-    PQcheckClear(logExecPrepared(PQconn,"resetRatings",
+    PQcheckClear(prepare_exec(resetRatings,
                  0,NULL,NULL,NULL,0));
-    PQcheckClear(logExecPrepared(PQconn,"doRate",
+    PQcheckClear(prepare_exec(doRate,
                  0,NULL,NULL,NULL,0));
-    PQcheckClear(logExecPrepared(PQconn,"zeroRated",
+    PQcheckClear(prepare_exec(zeroRated,
                  0,NULL,NULL,NULL,0));
-    PGresult* songs = logExecPrepared(PQconn,"listSongs",
+    PGresult* songs = prepare_exec(listSongs,
             0,NULL,NULL,NULL,0);
 
 
@@ -50,7 +49,7 @@ void main(int argc, char** argv) {
         const char* values[] = { PQgetvalue(songs,i,0) };
         int lengths[] = { PQgetlength(songs,i,0) };
         int fmt[] = { 0 };
-        PGresult* recordings = logExecPrepared(PQconn,"aRecording",
+        PGresult* recordings = prepare_exec(aRecording,
                 1,values,lengths,fmt,0);
         puts(PQgetvalue(recordings,0,0));
         currentDuration += strtod(PQgetvalue(recordings,0,1),NULL) / GST_SECOND;

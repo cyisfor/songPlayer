@@ -16,6 +16,21 @@
 
 #include <assert.h>
 
+preparation bestSongScoreRange = NULL;
+preparation bestSongRange = NULL;
+preparation bestSong = NULL;
+preparation bestRecordingScoreRange = NULL;
+preparation bestRecording = NULL;
+preparation resetRatings = NULL;
+preparation scoreByLast = NULL;
+preparation rateByPlayer = NULL;
+preparation updatePath = NULL;
+preparation getPath = NULL;
+preparation blacklist = NULL;
+preparation insertIntoQueue = NULL;
+preparation numQueued = NULL;
+preparation _expireProblems = NULL;
+
 void* myPQtest = NULL;
 
 /* Choose according to the number of songs, not the score range.
@@ -55,7 +70,7 @@ static PGresult* pickBestRecording(void) {
   char* song;
 
   result =
-    prepare_exec(PQconn,"bestSongScoreRange",
+    prepare_exec(bestSongScoreRange,
                    0,NULL,NULL,NULL,0);
   rows = PQntuples(result);
   cols = PQnfields(result);
@@ -78,7 +93,7 @@ static PGresult* pickBestRecording(void) {
       lengths[0] = snprintf(buf,0x100,"%f",pivot);
       const char* values[] = { buf };
       result =
-        prepare_exec(PQconn,"bestSongRange",
+        prepare_exec(bestSongRange,
                        1,values,lengths,fmt,0);
   }
   rows = PQntuples(result);
@@ -98,7 +113,7 @@ static PGresult* pickBestRecording(void) {
 
   { const char* values[] = { buf, offbuf };
       result =
-          prepare_exec(PQconn,"bestSong",
+          prepare_exec(bestSong,
                   2,values,lengths,fmt,0);
   }
   rows = PQntuples(result);
@@ -110,10 +125,9 @@ static PGresult* pickBestRecording(void) {
   lengths[0] = PQgetlength(result,0,0);
   g_message("Best song: %s %s",song,PQgetvalue(result,0,1));
 
-
   { const char* values[] = { song };
     result2 =
-      prepare_exec(PQconn,"bestRecordingScoreRange",
+      prepare_exec(bestRecordingScoreRange,
                      1,values,lengths,fmt,0);
   }
   rows = PQntuples(result2);
@@ -135,7 +149,7 @@ static PGresult* pickBestRecording(void) {
     const char* values[2] = { song, buf };
 
     result2 =
-      prepare_exec(PQconn,"bestRecording",
+      prepare_exec(bestRecording,
                      2,values,lengths,fmt,0);
   }
 
@@ -158,9 +172,9 @@ static uint8_t getNumQueued(void);
 volatile uint8_t queueInterrupted = 0;
 
 void queueRescore(void) {
-    PQcheckClear(prepare_exec(PQconn,"resetRatings",0,NULL,NULL,NULL,0));
-    PQcheckClear(prepare_exec(PQconn,"scoreByLast",0,NULL,NULL,NULL,0));
-    PQcheckClear(prepare_exec(PQconn,"rateByPlayer",0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(resetRatings,0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(scoreByLast,0,NULL,NULL,NULL,0));
+    PQcheckClear(prepare_exec(rateByPlayer,0,NULL,NULL,NULL,0));
 }
 
 bool try_to_find(const char* path, const char* recording, int rlen) {
@@ -175,7 +189,7 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 	g_warning("trying place %s", fmtderp);
     if(0==stat(buf,&derp)) {
       g_warning("found %s in %s\n",path,buf);
-      PQcheckClear(prepare_exec(PQconn,"updatePath", 
+      PQcheckClear(prepare_exec(updatePath, 
   	2,parameters,len,fmt,0));
       return true;
     }
@@ -209,14 +223,15 @@ TRYAGAIN:
       int len[] = { PQgetlength(result,0,0), sizeof("path not found") };
       const int fmt[] = { 0, 0 };
       struct stat buf;
-      PGresult* exists = prepare_exec(PQconn,"getPath",
+
+      PGresult* exists = prepare_exec(getPath,
               1,parameters,len,fmt,0);
       if(!PQgetvalue(exists,0,0) ||
             (0!=stat(PQgetvalue(exists,0,0),&buf))) {
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
             if(false==try_to_find(PQgetvalue(exists,0,0),parameters[0],len[0])) {
               PQclear(exists);
-              PQcheckClear(prepare_exec(PQconn,"blacklist",
+              PQcheckClear(prepare_exec(blacklist,
 										   2,parameters,len,fmt,0));
               PQclear(result);
               return queueHighestRated();
@@ -231,7 +246,7 @@ TRYAGAIN:
   int len[] =  { strlen(parameters[0]) };
   const int fmt[] = { 0 };
   PGresult* result2 =
-    prepare_exec(PQconn,"insertIntoQueue",
+    prepare_exec(insertIntoQueue,
                    1,parameters,len,fmt,0);
   PQclear(result);
   PQassert(result2,(long int)result2);
@@ -240,10 +255,9 @@ TRYAGAIN:
   return getNumQueued();
 }
 
-
 static uint8_t getNumQueued(void) {
   PGresult* result =
-    prepare_exec(PQconn,"numQueued",
+    prepare_exec(numQueued,
                    0,NULL,NULL,NULL,0);
   int rows = PQntuples(result);
   int cols = PQnfields(result);
@@ -256,24 +270,17 @@ static uint8_t getNumQueued(void) {
 }
 
 static void expireProblems(void) {
-    PQclear(prepare_exec(PQconn,"expireProblems",
+    PQclear(prepare_exec(_expireProblems,
                 0,NULL,NULL,NULL,0));
 }
 
 void queuePrepare(void) {
   /* these are used by queueRescore outside of the queuing thread */
-  preparation_t queries[] = {
-    { "scoreByLast",
-      "SELECT timeConnectionThingy(1)" },
-    { "rateByPlayer",
-      "SELECT rate(0,1)" },
-    { "resetRatings",
-      "DELETE FROM ratings"},
-		// used by command line queueing utilities
-		{ "insertIntoQueue",
-			"INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue"},
-  };
-  prepareQueries(queries);
+	scoreByLast = prepare("SELECT timeConnectionThingy(1)");
+	rateByPlayer = prepare("SELECT rate(0,1)");
+	resetRatings = prepare("DELETE FROM ratings");
+	// used by command line queueing utilities
+	insertIntoQueue = prepare("INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue");
 }
 
 static void* queueChecker(void* arg) {
@@ -290,34 +297,34 @@ static void* queueChecker(void* arg) {
   g_message("PQ Queue conn %p",PQconn);
   myPQtest = PQconn;
   queuePrepare();
-  preparation_t queries[] = {
-    { "numQueued",
-      "SELECT COUNT(id) FROM queue" },
+	numQueued = prepare("SELECT COUNT(id) FROM queue");
+	
 #define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))"
 
-    { "bestSongScoreRange",
-      "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG },
+  bestSongScoreRange = prepare
+		("SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG);
+	
 #define FROM_BEST_SONG_SCORE FROM_BEST_SONG " AND (score >= $1 OR (score IS NULL AND $1 = 0.0))"
-    { "bestSongRange",
-      "SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE },
-    { "bestSong",
-        "SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET $2 LIMIT 1" },
+	
+	bestSongRange = prepare
+		("SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE);
+	bestSong = prepare
+		("SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET $2 LIMIT 1");
+	
 #define FROM_BEST_RECORDING "FROM recordings LEFT OUTER JOIN ratings ON ratings.id = recordings.id WHERE recordings.song = $1"
-    { "bestRecordingScoreRange",
-      "SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING },
-    { "bestRecording",
-      "SELECT recordings.id " FROM_BEST_RECORDING " AND (score >= $2 OR (score IS NULL AND $2 = 0.0)) ORDER BY score LIMIT 1" },
-    { "getPath",
-        "SELECT path FROM recordings WHERE id = $1" },
-    { "updatePath",
-        "UPDATE recordings SET path = $1 WHERE id = $2" },
-    { "blacklist",
-        "INSERT INTO problems (id,reason) VALUES ($1,$2)" },
-    { "expireProblems",
-        "DELETE FROM problems WHERE clock_timestamp() - created > '1 hour'" }
-  };
+	bestRecordingScoreRange = prepare
+		("SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_RECORDING);
+	bestRecording = prepare
+		("SELECT recordings.id " FROM_BEST_RECORDING " AND (score >= $2 OR (score IS NULL AND $2 = 0.0)) ORDER BY score LIMIT 1");
+	getPath = prepare
+		("SELECT path FROM recordings WHERE id = $1");
+	updatePath = prepare
+		("UPDATE recordings SET path = $1 WHERE id = $2");
+	blacklist = prepare
+		("INSERT INTO problems (id,reason) VALUES ($1,$2)");
+	_expireProblems = prepare
+		("DELETE FROM problems WHERE clock_timestamp() - created > '1 hour'");
 
-  prepareQueries(queries);
   setNumQueued(getNumQueued());
 
   setupOffsetCurve(0.99);
@@ -346,7 +353,7 @@ void enqueue(char* id) {
     int len[] = {strlen(id)};
     const int fmt[] = { 0 };
     PGresult* result = 
-        prepare_exec(PQconn,"insertIntoQueue",
+        prepare_exec(insertIntoQueue,
                    1,parameters,len,fmt,0);
     PQassert(result,(long int)result);
     PQclear(result);

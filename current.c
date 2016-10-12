@@ -40,11 +40,13 @@ GtkLabel* labels[NUM_ROWS] = {};
 
 struct update_properties_info {
 };
-  
+
+preparation getTopSong = NULL;
+
 gboolean update_properties(gpointer udata) {
   //struct update_properties_info* inf = (struct update_properties_info*)udata;
   PGresult* result =
-	logExecPrepared(PQconn,"getTopSong",
+	prepare_exec(getTopSong,
 					0,NULL,NULL,NULL,0);
 
   int i = 0;
@@ -61,14 +63,14 @@ gboolean update_properties(gpointer udata) {
 		  unsigned long duration = atol(value) / 1000000000;
 		  if(duration > 60) {
 			int seconds = duration % 60;
-			int amt = snprintf(real_value,0x100,"%um",duration / 60);
+			int amt = snprintf(real_value,0x100,"%lum",duration / 60);
 			if(seconds) {
 			  amt += snprintf(real_value+amt,
 							  0x100-amt,
 							  " %us",seconds);
 			}
 		  } else {
-			snprintf(real_value,0x100,"%us",duration);
+			snprintf(real_value,0x100,"%lus",duration);
 		  }
 		  value = real_value;
 		} else if(i==0) {
@@ -98,7 +100,7 @@ activate (GtkApplication* app,
 	gtk_window_present(GTK_WINDOW(top));
 	return;
   }
-  builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
+  builder = gtk_builder_new_from_string((const char*)gladeFile,gladeFile_length);
   top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
   props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
   title =
@@ -109,21 +111,19 @@ activate (GtkApplication* app,
 
   activated = true;
   PQinit();
-  preparation_t queries[] = {
-    "getTopSong",
-      "SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
-          "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
-    "(SELECT score FROM ratings WHERE ratings.id = songs.id) AS score,"
-          "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
-          "songs.played, songs.id "
-          "FROM queue "
-          "INNER JOIN recordings ON recordings.id = queue.recording "
-          "INNER JOIN songs ON recordings.song = songs.id "
-          "LEFT OUTER JOIN albums ON recordings.album = albums.id "
-          "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-          "ORDER BY queue.id ASC LIMIT 2"
-  };
-  prepareQueries(queries);
+	getTopSong = prepare
+		("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
+		 "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
+		 "(SELECT score FROM ratings WHERE ratings.id = songs.id) AS score,"
+		 "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
+		 "songs.played, songs.id "
+		 "FROM queue "
+		 "INNER JOIN recordings ON recordings.id = queue.recording "
+		 "INNER JOIN songs ON recordings.song = songs.id "
+		 "LEFT OUTER JOIN albums ON recordings.album = albums.id "
+		 "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+		 "ORDER BY queue.id ASC LIMIT 2"
+  );
 
   GtkCssProvider * odd_style = gtk_css_provider_get_default ();
   GError* gerror = NULL;
@@ -171,11 +171,13 @@ activate (GtkApplication* app,
 }
 
 int main (int argc, char ** argv) {
-  int pid = fork();
-  assert(pid >= 0);
-  if(pid > 0) {
-	return 0;
-  }
+	if(NULL==getenv("nofork")) {
+		int pid = fork();
+		assert(pid >= 0);
+		if(pid > 0) {
+			return 0;
+		}
+	}
   GtkApplication *app;
   int status;
 

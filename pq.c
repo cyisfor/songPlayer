@@ -48,6 +48,15 @@ void PQcheckClear(PGresult* r) {
     PQclear(r);
 }
 
+
+bool pq_needed_reset(void) {
+	if(PQstatus(PQconn) == CONNECTION_OK) return false;
+	do {
+		PQreset(PQconn);
+	} while(PQstatus(PQconn) != CONNECTION_OK);
+	return true;
+}
+
 #ifdef DEBUG_STATEMENTS
 FILE* stmtLog = NULL;
 int i,j;
@@ -145,13 +154,5 @@ PGresult *logExecPrepared(PGconn *conn,
     fputc('\n',stmtLog);
     fflush(stmtLog);
     return res;
-}
-
-bool pq_needed_reset(void) {
-	if(PQstatus(PQconn) == CONNECTION_OK) return false;
-	do {
-		PQreset(PQconn);
-	} while(PQstatus(PQconn) != CONNECTION_OK);
-	return true;
 }
 #endif

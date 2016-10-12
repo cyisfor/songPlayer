@@ -42,6 +42,8 @@ static void fillNext(GtkTreeSelection* selection, GtkListStore* model) {
 
 }
 
+preparation _rate, getpage;
+
 void rate(GtkTreeModel* model, GtkTreePath* path, GtkTreeIter* iter, gpointer data) {
     uint8_t rating = (uint8_t) (uintptr_t) data;
     static char srating[0x10];
@@ -52,7 +54,7 @@ void rate(GtkTreeModel* model, GtkTreePath* path, GtkTreeIter* iter, gpointer da
     const int lengths[] = { ratlen, strlen(idstr) };
     const int fmt[] = { 0, 0 };
     printf("Rating %s %d\n",idstr,rating);
-    //PQclear(PQexecParams(PQconn,"rate",2,NULL,values,lengths,fmt,0));
+    PQclear(prepare_exec(_rate,2,values,lengths,fmt,0));
 }
 
 static void yay(GtkWidget* btn, GtkTreeSelection* selection) {
@@ -66,17 +68,15 @@ static void nay(GtkWidget* btn, GtkTreeSelection* selection) {
 }
 
 int main(void) {
-    preparation_t queries[] = {
-        { "rate",
-            "SELECT connectionStrength((select id from mode),$2,$1)" },
-        { "getpage",
-            "select strength,title,songs.id from connections inner join songs on connections.blue = songs.id where red = (select id from mode) order by strength desc OFFSET $1 LIMIT $2;" }
-    };
-    PQinit();
-    gtk_init(NULL,NULL);
-    prepareQueries(queries);
+	PQinit();
+	_rate = prepare
+		("SELECT connectionStrength((select id from mode),$2,$1)");
+	getpage = prepare
+		("select strength,title,songs.id from connections inner join songs on connections.blue = songs.id where red = (select id from mode) order by strength desc OFFSET $1 LIMIT $2;");
 
-    GtkBuilder* builder = gtk_builder_new_from_string(gladeFile,gladeFileSize);
+    gtk_init(NULL,NULL);
+  
+    GtkBuilder* builder = gtk_builder_new_from_string((const char*)gladeFile,gladeFile_length);
     GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
     GtkTreeSelection* selection = GTK_TREE_SELECTION(
             gtk_builder_get_object(builder,"song-selection"));

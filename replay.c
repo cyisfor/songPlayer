@@ -4,18 +4,14 @@
 
 int main(int argc, char *argv[])
 {
-	preparation_t queries[] = {
-    { "getTopRecording",
-      "SELECT queue.recording"
-      " FROM queue ORDER BY queue.id ASC LIMIT 1"
-		},
-  };
 	PQinit();
 	queuePrepare();
-  prepareQueries(queries);
+	preparation getTopRecording = prepare
+		("SELECT queue.recording"
+		 " FROM queue ORDER BY queue.id ASC LIMIT 1");
 
 	PGresult* result = 
-		logExecPrepared(PQconn,"getTopRecording",
+		prepare_exec(getTopRecording,
 										0,NULL,NULL,NULL,0);
 	int rows = PQntuples(result);
 	if(rows == 0) {

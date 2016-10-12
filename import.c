@@ -78,14 +78,14 @@ static void fixEmptyHashes(void) {
 
 }
 
-char* findWhat(const char* what, const char* uniq) {
+char* findWhat(preparation what, const char* uniq) {
     if(uniq==NULL) return NULL;
     const char* values[1] = { uniq };
     int lengths[1] = { strlen(uniq) };
     int fmt[1] = { 0 };
-    PGresult* r = logExecPrepared(PQconn,what,
-                                 1,
-                                 values, lengths, fmt, 0);
+    PGresult* r = prepare_exec(what,
+															 1,
+															 values, lengths, fmt, 0);
     PQassert(r,r && PQresultStatus(r)==PGRES_TUPLES_OK);
     assert(PQntuples(r)==1);
     char* id = strdup(PQgetvalue(r,0,0));
@@ -93,27 +93,38 @@ char* findWhat(const char* what, const char* uniq) {
     return id;
 }
 
-void setWhat(const char* what, const char* thing, const char* id) {
+void setWhat(preparation what, const char* thing, const char* id) {
     if(thing==NULL) return;
     const char* values[2] = { id, thing };
     int lengths[2] = { strlen(id), strlen(thing) };
     int fmt[2] = { 0, 0 };
-    PGresult* r = logExecPrepared(PQconn,what,
-                                 2,
-                                 values, lengths, fmt, 0);
+    PGresult* r = prepare_exec(what,
+															 2,
+															 values, lengths, fmt, 0);
     PQassert(r,r && PQresultStatus(r)==PGRES_COMMAND_OK);
     PQclear(r);
 }
 
+preparation emptyHashes,
+	setHash,
+	_checkPath,
+	_findRecording,
+	updateRecording,
+	setPath,
+	setAlbum,
+	findSong,
+	findArtist,
+	findAlbum;
+
 char* findRecording(const char* song, const char* recorded, const char* artist, const char* path) {
     char* h = hash(path);
     printf("Hash: %s Path: %s\n",h,path);
-    char* id = findWhat("findRecording",h);
+    char* id = findWhat(_findRecording,h);
 
     const char* values[4] = { song, recorded, artist, id};
     int lengths[4] = { strlen(song), recorded ? strlen(recorded) : 0, artist ? strlen(artist) : 0, strlen(id) };
     int fmt[4] = { 0, 0, 0, 0};
-    PGresult* r = logExecPrepared(PQconn,"updateRecording",
+    PGresult* r = prepare_exec(updateRecording,
                                  4,
                                  values,lengths,fmt,0);
     puts("beep");
@@ -126,7 +137,7 @@ bool checkPath(const char* path) {
     const char* values[1] = { path };
     int lengths[1] = { strlen(path) };
     int fmt[1] = {0};
-    PGresult* r = logExecPrepared(PQconn,"checkPath",
+    PGresult* r = prepare_exec(_checkPath,
                                  1,
                                  values,lengths,fmt,0);
     if(PQresultStatus(r)==PGRES_TUPLES_OK) {
@@ -142,34 +153,31 @@ bool checkPath(const char* path) {
 int main(void) {
     srandom(time(NULL));
     PQinit();
-    preparation_t queries[] = {
-        { "emptyHashes",
-          "SELECT id,path FROM recordings WHERE hash IS NULL LIMIT 5"},
-        { "setHash",
-          "UPDATE recordings SET hash = $2 WHERE id = $1"},
-        { "checkPath",
-            "SELECT id FROM recordings WHERE path = $1" },
-        { "findRecording",
-          "SELECT selinsThingRecordings($1)"},
-        { "updateRecording",
-          "UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4"},
-        { "setPath",
-          "UPDATE recordings SET path = $2 WHERE id = $1" },
-        { "setAlbum",
-          "UPDATE recordings SET album = $2 WHERE id = $1"},
-        { "findSong",
-          "SELECT selinsThingSongs($1)"},
-        { "findArtist",
-          "SELECT selinsThingArtists($1)"},
-        { "findAlbum",
-          "SELECT selinsThingAlbums($1)"}
-    };
-    prepareQueries(queries);
+		emptyHashes = prepare
+			("SELECT id,path FROM recordings WHERE hash IS NULL LIMIT 5");
+		setHash = prepare
+			("UPDATE recordings SET hash = $2 WHERE id = $1");
+		_checkPath = prepare
+			("SELECT id FROM recordings WHERE path = $1" );
+		_findRecording = prepare
+			("SELECT selinsThingRecordings($1)");
+		updateRecording = prepare
+			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
+		setPath = prepare
+			("UPDATE recordings SET path = $2 WHERE id = $1" );
+		setAlbum = prepare
+			("UPDATE recordings SET album = $2 WHERE id = $1");
+		findSong = prepare
+			("SELECT selinsThingSongs($1)");
+		findArtist = prepare
+			("SELECT selinsThingArtists($1)");
+		findAlbum = prepare
+			("SELECT selinsThingAlbums($1)");
     fixEmptyHashes();
     char* line = NULL;
     char* relpath = NULL;
-    ssize_t amt = 0;
-    ssize_t pathamt = 0;
+    size_t amt = 0;
+    size_t pathamt = 0;
     for(;;) {
         char *title = NULL;
         char *artist = NULL;
@@ -250,11 +258,11 @@ int main(void) {
 
         PQbegin();
 
-        char* songid = findWhat("findSong",title);
+        char* songid = findWhat(findSong,title);
         free(title);
-        char* artistid = findWhat("findArtist",artist);
+        char* artistid = findWhat(findArtist,artist);
         free(artist);
-        char* albumid = findWhat("findAlbum",album);
+        char* albumid = findWhat(findAlbum,album);
         free(album);
 
         PQcommit();
@@ -277,9 +285,9 @@ int main(void) {
         free(songid);
         free(artistid);
         printf("Recording %s\n",recording);
-        setWhat("setPath",path,recording);
+        setWhat(setPath,path,recording);
         if(albumid)
-            setWhat("setAlbum",albumid,recording);
+            setWhat(setAlbum,albumid,recording);
         free(albumid);
 
         PQcommit();

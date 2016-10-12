@@ -58,7 +58,7 @@ print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
       g_print ("(%s . %s)\n", tag,
           (g_value_get_boolean (val)) ? "#t" : "#f");
     } else if (GST_VALUE_HOLDS_BUFFER (val)) {
-      g_print ("(%s . (buffer %u))", tag,
+      g_print ("(%s . (buffer %lu))", tag,
               gst_buffer_get_size(gst_value_get_buffer (val)));
     } else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
 	   GDate* date = (GDate*)g_value_get_boxed(val);
@@ -191,6 +191,7 @@ static gboolean on_input(GIOChannel* in, GIOCondition condition, GMainLoop* loop
     nextSong(buf);
     return TRUE;
   };
+	return FALSE;
 }
 
 

@@ -1,4 +1,5 @@
 #include <libpq-fe.h>
+#include <stdbool.h>
 
 // need one connection per thread :/
 extern __thread PGconn* PQconn;
@@ -26,3 +27,5 @@ PGresult *logExecPrepared(PGconn *conn,
 #else
 #define logExecPrepared PQexecPrepared
 #endif
+
+bool pq_needed_reset(void);

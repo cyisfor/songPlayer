@@ -47,7 +47,7 @@ static gboolean deliver_signal(GIOChannel *source, GIOCondition cond, gpointer d
   } buf;
   GIOStatus status;		/* save the reading status */
   gsize bytes_read;		/* save the number of chars read */
-  char text[40];		/* the text that will appear in the label */
+  //char text[40];		/* the text that will appear in the label */
   
 
   /* 

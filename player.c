@@ -271,6 +271,8 @@ static gboolean on_activate(GstPad* pad, GstObject* parent) {
   return TRUE;
 }
 
+preparation getTopRecording = NULL;
+
 /* Note: will restart the current song if called. */
 
 void playerPlay(void) {
@@ -283,7 +285,7 @@ void playerPlay(void) {
   for(;;) {
       waitUntilSongInQueue();
       result =
-          prepare_exec(PQconn,"getTopRecording",
+          prepare_exec(getTopRecording,
                          0,NULL,NULL,NULL,0);
       rows = PQntuples(result);
       if(rows>0) break;
@@ -397,14 +399,11 @@ int main (int argc, char ** argv)
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);
 
-  preparation_t queries[] = {
-    { "getTopRecording",
-      "SELECT queue.recording,"
-      "replaygain.gain,replaygain.peak,replaygain.level,"
-      "recordings.path "
-      "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1" },
-  };
-  prepareQueries(queries);
+	getTopRecording = prepare
+		("SELECT queue.recording,"
+		 "replaygain.gain,replaygain.peak,replaygain.level,"
+		 "recordings.path "
+		 "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1");
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
   void done_quit() {

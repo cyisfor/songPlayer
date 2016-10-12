@@ -8,43 +8,19 @@
 #include <string.h>
 #include <sys/stat.h>
 
-static gchar* strescape(const gchar* unformatted,
-			const gchar* targets,
-			const gchar* substs) {
-  ssize_t uflen = strlen(unformatted);
-  ssize_t tlen = strlen(targets);
-  GString* results = g_string_sized_new(uflen);
-  int i;
-  for(i=0;i<uflen;++i) {
-    int j;
-    gboolean found = FALSE;
-    for(j=0;j<tlen;++j) {
-      if(unformatted[i]==targets[j]) {
-	g_string_append_c(results,'\\');
-	g_string_append_c(results,substs[j]);
-	found = TRUE;
-	break;
-      }
-    }
-    if(found==FALSE)
-      g_string_append_c(results,unformatted[i]);
-  }
-
-  return g_string_free(results,FALSE);
-}
+preparation nextRGlessRecording = NULL;
 
 char* currentRecording = NULL;
 
 GstElement* src = NULL;
 GstElement* derpipe = NULL;
 static void nextSong(void) {
-    PGresult* next = logExecPrepared(PQconn,
-                                    "nextRGlessRecording",
-                                    0,
-                                    NULL,
-                                    NULL,
-                                    NULL,
-                                    0);
+	PGresult* next = prepare_exec(nextRGlessRecording,
+																0,
+																NULL,
+																NULL,
+																NULL,
+																0);
   gst_element_set_state (derpipe, GST_STATE_NULL);
   if(PQntuples(next)==0) {
       puts("All songs are replaygain analyzed.");
@@ -60,8 +36,6 @@ static void nextSong(void) {
       currentRecording = strdup(PQgetvalue(next,0,1));
       g_message("Examining %s %s\n",currentRecording,path);
       PQclear(next);
-      GstFormat fmt = GST_FORMAT_TIME;
-      gint64 len = -1;
       gst_element_set_state (derpipe, GST_STATE_PLAYING);
   }
 }
@@ -72,6 +46,8 @@ struct rginfo {
     double level;
     short numgot;
 };
+
+preparation _setReplayGain = NULL;
 
 void setReplayGain(struct rginfo* info) {
     char peak[0x400];
@@ -84,13 +60,12 @@ void setReplayGain(struct rginfo* info) {
     const char* values[] = { currentRecording, peak, gain, level };
     int lengths[] = { strlen(currentRecording), plen, glen, llen };
     int fmt[] = { 0, 0, 0, 0 };
-    PQcheckClear(logExecPrepared(PQconn,
-                                "setReplayGain",
-                                4,
-                                values,
-                                lengths,
-                                fmt,
-                                0));
+    PQcheckClear(prepare_exec(_setReplayGain,
+															4,
+															values,
+															lengths,
+															fmt,
+															0));
     free(currentRecording);
     currentRecording = NULL;
     info->numgot = 0;
@@ -100,7 +75,6 @@ void setReplayGain(struct rginfo* info) {
 static void
 handle_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
 {
-  int i, num;
   struct rginfo* info = (struct rginfo*)user_data;
   if(info->numgot == (1|2|4)) return;
 
@@ -207,15 +181,12 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
 int
 main (int argc, char ** argv)
 {
-    PQinit();
-    preparation_t queries[] = {
-        { "nextRGlessRecording",
-          "SELECT path,recordings.id FROM recordings LEFT OUTER JOIN replaygain ON replaygain.id = recordings.id WHERE replaygain.id IS NULL" },
-        { "setReplayGain",
-          "INSERT INTO replaygain (id,peak,gain,level) VALUES ($1,$2,$3,$4)"}
-    };
+	PQinit();
+	nextRGlessRecording = prepare
+		("SELECT path,recordings.id FROM recordings LEFT OUTER JOIN replaygain ON replaygain.id = recordings.id WHERE replaygain.id IS NULL");
+	_setReplayGain = prepare
+		("INSERT INTO replaygain (id,peak,gain,level) VALUES ($1,$2,$3,$4)");
 
-    prepareQueries(queries);
 
   gst_init (&argc, &argv);
 

@@ -16,13 +16,10 @@
 
 void playerPlay(void) {}
 
-void main(void) {
-    selectSetup();
-  preparation_t queries[] = {
-    { "getTopRecording",
-      "SELECT queue.recording FROM queue ORDER BY queue.id ASC LIMIT 1" },
-  };
-  prepareQueries(queries);
+int main(void) {
+	selectSetup();
+  preparation getTopRecording = prepare
+		("SELECT queue.recording FROM queue ORDER BY queue.id ASC LIMIT 1");
 
   PGresult* result;
   struct timeval start,done;
@@ -33,7 +30,7 @@ void main(void) {
       for(;;) {
           waitUntilSongInQueue();
           result =
-              logExecPrepared(PQconn,"getTopRecording",
+						prepare_exec(getTopRecording,
                              0,NULL,NULL,NULL,0);
           rows = PQntuples(result);
           if(rows>0) break;
@@ -41,10 +38,9 @@ void main(void) {
           sleep(1);
       }
 
-      int cols = PQnfields(result);
+      cols = PQnfields(result);
       fprintf(stderr,"rows %x cols %x\n",rows,cols);
       PQassert(result,rows>=1 && cols==1);
-      char* end;
 
       char* recording = PQgetvalue(result,0,0);
       gettimeofday(&done,NULL);

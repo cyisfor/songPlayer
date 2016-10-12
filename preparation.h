@@ -1,11 +1,14 @@
+#include "pq.h"
+
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef struct {
-  const char* name;
-  const char* query;
-} preparation_t;
+typedef struct preparation *preparation;
 
-#define prepareQueries(queries) prepareQueries_p(queries,sizeof(queries)/sizeof(preparation_t))
-
-void prepareQueries_p(preparation_t queries[],ssize_t num);
+preparation prepare(const char* query);
+PGresult *prepare_exec(preparation self,
+											 int nParams,
+											 const char * const *paramValues,
+											 const int *paramLengths,
+											 const int *paramFormats,
+											 int resultFormat);

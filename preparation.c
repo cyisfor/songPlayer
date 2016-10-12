@@ -1,50 +1,62 @@
 #include "preparation.h"
-#include "pq.h"
+#include <stdbool.h>
+#include <string.h>
 
-preparation_t* memory = NULL;
+struct preparation {
+	const char* name;
+	const char* query;
+	bool dirty;
+};
+
+preparation memory = NULL;
 int memn = 0;
 
 bool prepare_needed_reset(void) {
 	if(!pq_needed_reset()) return false;
 	int i;
 	for(i=0;i<memn;++i) {
-		PGresult* result = 
-			PQprepare(PQconn,
-                memory[i].name,
-                memory[i].query,
-                0,
-                NULL);
+		memory[i].dirty = true;
 	}
 	return true;
 }
 
-PGresult *prepare_exec(PGconn *conn,
-                         const char *stmtName,
+void doprepare(preparation self) {
+    PGresult* result = 
+      PQprepare(PQconn,
+                self->name,
+								self->query,
+                0,
+                NULL);
+    PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
+		self->dirty = false;
+}
+
+PGresult *prepare_exec(preparation self,
                          int nParams,
                          const char * const *paramValues,
                          const int *paramLengths,
                          const int *paramFormats,
                          int resultFormat) {
+	PGresult* res;
 	do {
-		PGresult* res =
-			logExecPrepared(conn,stmtName,nParams,paramValues,paramLengths,paramFormats,resultFormat);
+		if(self->dirty) {
+			doprepare(self);
+		}
+		res =
+			logExecPrepared(PQconn,
+											self->name,
+											nParams,paramValues,paramLengths,paramFormats,resultFormat);
 	} while(prepare_needed_reset());
 	return res;
 }
 
-void prepareQueries_p(preparation_t queries[],ssize_t num) {
-  int i;
-	memory = realloc(memory,sizeof(preparation_t)*(memn+num));
-	memcpy(memory+sizeof(preparation_t)*memn,queries,sizeof(preparation_t)*num);
-	memn += num;
-  for(i=0;i<num;++i) {
-    fprintf(stderr,"Preparing query %s %p\n",queries[i].name,PQconn);
-    PGresult* result = 
-      PQprepare(PQconn,
-                queries[i].name,
-                queries[i].query,
-                0,
-                NULL);
-    PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
-  }
+preparation prepare(const char* query) {
+	++memn;
+	memory = realloc(memory,sizeof(struct preparation)*(memn));
+	char buf[0x100] = "P";
+	snprintf(buf+1,0x100-1,"%x",memn);
+	memory[memn-1].name = strdup(buf);
+	memory[memn-1].query = query;
+	memory[memn-1].dirty = true;
+	return &memory[memn - 1];
 }

@@ -10,31 +10,6 @@
 
 GMainLoop *loop = NULL;
 
-static gchar* strescape(const gchar* unformatted,
-			const gchar* targets,
-			const gchar* substs) {
-  ssize_t uflen = strlen(unformatted);
-  ssize_t tlen = strlen(targets);
-  GString* results = g_string_sized_new(uflen);
-  int i;
-  for(i=0;i<uflen;++i) {
-    int j;
-    gboolean found = FALSE;
-    for(j=0;j<tlen;++j) {
-      if(unformatted[i]==targets[j]) {
-	g_string_append_c(results,'\\');
-	g_string_append_c(results,substs[j]);
-	found = TRUE;
-	break;
-      }
-    }
-    if(found==FALSE)
-      g_string_append_c(results,unformatted[i]);
-  }
-
-  return g_string_free(results,FALSE);
-}
-
 GstElement* panpipe = NULL;
 
 gint64 lastDuration = -1;
@@ -45,9 +20,9 @@ bus_call (GstBus     *bus,
           gpointer    data)
 {
     {
-      guint64 len = -1;
+      gint64 len = -1;
       if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
-        printf("Found duration %lld\n",len);
+        printf("Found duration %ld\n",len);
         lastDuration = len;
         gst_element_set_state (panpipe, GST_STATE_NULL);
         g_main_loop_quit(loop);
@@ -94,10 +69,6 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
   sinkpad = gst_element_get_static_pad (sinkElement, "sink");
   if(sinkpad==NULL) return;
   if (!gst_pad_is_linked (sinkpad)) {
-    GstCaps* a;
-    a = gst_pad_get_current_caps(pad);
-    GstCaps* b;
-    b = gst_pad_get_current_caps(sinkpad);
     GstPadLinkReturn ret = gst_pad_link (pad, sinkpad);
     if(ret == GST_PAD_LINK_NOFORMAT) {
       gst_pad_unlink (pad, sinkpad);
@@ -135,16 +106,14 @@ int
 main (int argc, char ** argv)
 {
     PQinit();
-    preparation_t queries[] = {
-        { "nullRecordings",
-          "SELECT id,path FROM recordings WHERE duration IS NULL"},
-        { "deleteRecording",
-            "DELETE FROM recordings WHERE id = $1"},
-        { "setDuration",
-            "UPDATE recordings SET duration = $2 WHERE id = $1"}
-    };
-    prepareQueries(queries);
-    PGresult* recordings = logExecPrepared(PQconn,"nullRecordings",
+    preparation nullRecordings = prepare
+			("SELECT id,path FROM recordings WHERE duration IS NULL");
+		preparation deleteRecording = prepare
+			("DELETE FROM recordings WHERE id = $1");
+		preparation setDuration = prepare
+			("UPDATE recordings SET duration = $2 WHERE id = $1");
+
+    PGresult* recordings = prepare_exec(nullRecordings,
             0,NULL,NULL,NULL,0);
 
 
@@ -179,13 +148,12 @@ main (int argc, char ** argv)
 
     int i;
     for(i=0;i<PQntuples(recordings);++i) {
-        GString* next = g_string_new(argv[1]);
         const char* values[2] = { PQgetvalue(recordings,i,0) };
         int lengths[2] = { PQgetlength(recordings,i,0) };
         int fmt[] = { 0, 0 };
 
         if(0!=nextSong(PQgetvalue(recordings,i,1))) {
-            PQcheckClear(logExecPrepared(PQconn,"deleteRecording",
+            PQcheckClear(prepare_exec(deleteRecording,
                         1,values,lengths,fmt,0));
         } else {
             g_main_loop_run(loop);
@@ -193,7 +161,7 @@ main (int argc, char ** argv)
                 char stdurr[0x100];
                 lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
                 values[1] = stdurr;
-                PQcheckClear(logExecPrepared(PQconn,"setDuration",
+                PQcheckClear(prepare_exec(setDuration,
                         2,values,lengths,fmt,0));
                 lastDuration = -1;
             }

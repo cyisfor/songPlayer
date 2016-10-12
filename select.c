@@ -14,13 +14,17 @@
 #include <stdlib.h>
 #include <assert.h>
 
+preparation popTopSong = NULL;
+preparation notifyNext = NULL;
+preparation currentSongWasPlayed = NULL;
+
 void selectNext(void) {
   PGresult *result =
-    prepare_exec(PQconn,"popTopSong",
+    prepare_exec(popTopSong,
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_COMMAND_OK);
   PQclear(result);
-  PQclear(prepare_exec(PQconn,"notifyNext",
+  PQclear(prepare_exec(notifyNext,
                           0,NULL,NULL,NULL,0));
 
   songOutOfQueue();
@@ -28,7 +32,7 @@ void selectNext(void) {
 
 void selectDone(void) {
   PGresult *result =
-    prepare_exec(PQconn,"currentSongWasPlayed",
+    prepare_exec(currentSongWasPlayed,
                    0,NULL,NULL,NULL,0);
   PQassert(result,result && PQresultStatus(result)==PGRES_TUPLES_OK);
   PQclear(result);
@@ -42,15 +46,10 @@ void selectSetup(void) {
   PQinit();
   queuePrepare();
 
-  preparation_t queries[] = {
-    { "currentSongWasPlayed",
-      "SELECT songWasPlayed(recording) FROM (select recording FROM queue ORDER BY id ASC LIMIT 1) AS fuckeverything" },
-    { "notifyNext",
-      "NOTIFY next"},
-    { "popTopSong",
-      "DELETE FROM queue WHERE id = (SELECT id FROM queue ORDER BY id ASC LIMIT 1)" },
-  };
+  currentSongWasPlayed = prepare
+		("SELECT songWasPlayed(recording) FROM (select recording FROM queue ORDER BY id ASC LIMIT 1) AS fuckeverything");
+	notifyNext = prepare("NOTIFY next");
+	popTopSong = prepare("DELETE FROM queue WHERE id = (SELECT id FROM queue ORDER BY id ASC LIMIT 1)");
 
-  prepareQueries(queries);
 
 }

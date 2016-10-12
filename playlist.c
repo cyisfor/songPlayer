@@ -125,9 +125,11 @@ void send_playlist(struct client* client) {
 					 close_stuff);
 }
 
+preparation getTopSongPath = NULL;
+
 void get_latest_song() {
 	PGresult* current_song =
-		logExecPrepared(PQconn,"getTopSongPath",
+		prepare_exec(getTopSongPath,
 										0,NULL,NULL,NULL,0);
 	if(PQntuples(current_song) == 0) {
 		PQcheckClear(current_song);
@@ -257,13 +259,13 @@ int main(int argc, char** argv) {
 	const char* host = getenv("host");
 	assert(host);
 
-	#define DOPRINTF(what, ...) http_session[what].len = g_snprintf \
-			(NULL,0,																									 \
-			 format,																									 \
-			 __VA_ARGS__)+1;																						 \
-	http_session[what].base = g_malloc(http_session[what].len);			 \
-	g_snprintf(http_session[what].base,http_session[what].len--,			 \
-						 format,																						 \
+#define DOPRINTF(what, ...) http_session[what].len = g_snprintf \
+		(NULL,0,																										\
+		 format,																										\
+		 __VA_ARGS__)+1;																						\
+	http_session[what].base = g_malloc(http_session[what].len);		\
+	g_snprintf(http_session[what].base,http_session[what].len--,	\
+						 format,																						\
 						 __VA_ARGS__);
 
 	if(getenv("prefix")) {
@@ -276,11 +278,10 @@ int main(int argc, char** argv) {
 
 	format = "http://[%s]:%d/";
 	DOPRINTF(PLAYLIST_URI,host,PORT);
-
-	preparation_t query[] = {
-    {
-      "getTopSongPath",
-			"SELECT recordings.path\n"
+	
+	PQinit();
+	getTopSongPath = prepare
+		("SELECT recordings.path\n"
 #ifdef USEEXT
 			"  , recordings.duration / 1000000000,\n"
 			"  songs.title\n"
@@ -291,11 +292,7 @@ int main(int argc, char** argv) {
 			"INNER JOIN songs ON songs.id = recordings.song\n"
 #endif
 			"ORDER BY queue.id ASC LIMIT 1"
-		}
-	};
-
-	PQinit();
-	prepareQueries(query);
+		 );
 
 	waiters = g_ptr_array_sized_new(5);
 

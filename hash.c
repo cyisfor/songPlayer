@@ -33,13 +33,12 @@ char* hash(const char* path) {
     }
     int fd = open(path,O_RDONLY);
     assert(fd>0);
-    ssize_t amt;
     char buf[0x1000];
     for(;;) {
-        int amt = read(fd,buf,0x1000);
+        ssize_t amt = read(fd,buf,0x1000);
         if(amt <= 0) break;
         gcry_md_write(hd,buf,amt);
     }
     close(fd);
-    return hexencode(gcry_md_read(hd,GCRY_MD_SHA256));
+    return hexencode((char*)gcry_md_read(hd,GCRY_MD_SHA256));
 }
