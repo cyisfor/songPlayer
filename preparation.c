@@ -1,6 +1,7 @@
 #include "preparation.h"
 #include <stdbool.h>
 #include <string.h>
+#include <error.h>
 
 struct preparation {
 	const char* name;
@@ -31,6 +32,15 @@ void doprepare(preparation self) {
 		self->dirty = false;
 }
 
+bool not_found(PGresult* res) {
+	if(PQresultStatus(res) != PGRES_FATAL_ERROR) return false;
+	const char* err = PQresultErrorMessage(res);
+	ssize_t len = strlen(err);
+	const char* tail = memmem(err,len,LITLEN("prepared statement"));
+	if(tail == NULL) return false;
+	return memmem(tail,len-(tail-err),LITLEN("does not exist"));
+}
+
 PGresult *prepare_exec(preparation self,
                          int nParams,
                          const char * const *paramValues,
@@ -46,7 +56,10 @@ PGresult *prepare_exec(preparation self,
 			logExecPrepared(PQconn,
 											self->name,
 											nParams,paramValues,paramLengths,paramFormats,resultFormat);
-	} while(prepare_needed_reset());
+	} while(prepare_needed_reset() || not_found(res));
+	if(PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
+		error(0,0,"derp %s %s",self->name,self->query);
+	}
 	return res;
 }
 
