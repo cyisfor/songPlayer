@@ -1,7 +1,10 @@
+#define _GNU_SOURCE // memmem
 #include "preparation.h"
 #include <stdbool.h>
 #include <string.h>
 #include <error.h>
+
+#define LITLEN(a) a, (sizeof(a)-1)
 
 struct preparation {
 	const char* name;
@@ -38,7 +41,7 @@ bool not_found(PGresult* res) {
 	ssize_t len = strlen(err);
 	const char* tail = memmem(err,len,LITLEN("prepared statement"));
 	if(tail == NULL) return false;
-	return memmem(tail,len-(tail-err),LITLEN("does not exist"));
+	return NULL != memmem(tail,len-(tail-err),LITLEN("does not exist"));
 }
 
 PGresult *prepare_exec(preparation self,
@@ -56,7 +59,20 @@ PGresult *prepare_exec(preparation self,
 			logExecPrepared(PQconn,
 											self->name,
 											nParams,paramValues,paramLengths,paramFormats,resultFormat);
-	} while(prepare_needed_reset() || not_found(res));
+		if(not_found(res)) {
+			/* when you prepare a statement in one thread, set dirty to false, then execute it in another
+				 thread, it needs to be prepared...
+				 how to conditionally clone a statement if it's not in the same thread? hmm...
+			*/
+			doprepare(self);
+			PQclear(res);
+			res =
+			logExecPrepared(PQconn,
+											self->name,
+											nParams,paramValues,paramLengths,paramFormats,resultFormat);
+			break;
+		}
+	} while(prepare_needed_reset());
 	if(PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
 		error(0,0,"derp %s %s",self->name,self->query);
 	}
