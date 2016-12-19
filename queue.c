@@ -350,13 +350,13 @@ void queueStart(void) {
   pthread_create(&thread,&attr,queueChecker,NULL);
 }
 
-void enqueue(char* id) {
+void enqueue(const char* id,uint32_t len) {
     const char* parameters[] = {id};
-    int len[] = {strlen(id)};
+    int lens[] = {len};
     const int fmt[] = { 0 };
     PGresult* result = 
         prepare_exec(insertIntoQueue,
-                   1,parameters,len,fmt,0);
+                   1,parameters,lens,fmt,0);
     PQassert(result,(long int)result);
     PQclear(result);
 }
@@ -369,7 +369,8 @@ void enqueuePath(const char* path) {
         prepare_exec(byPath,
                    1,parameters,len,fmt,0);
     PQassert(result,(long int)result);
-		enqueue(PQgetvalue(result,0,0));
-		puts(PQgetvalue(result,0,0));
+		puts(path);
+		assert(NULL != PQgetvalue(result,0,0));
+		enqueue(PQgetvalue(result,0,0),PQgetlength(result,0,0));
     PQclear(result);
 }

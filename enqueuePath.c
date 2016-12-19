@@ -8,7 +8,7 @@ int main(int argc, char**argv) {
     int i;
     PQinit();
 		queuePrepare();
-    for(i=0;i<argc;++i) {
+    for(i=1;i<argc;++i) {
 			char p[PATH_MAX];
         enqueuePath(realpath(argv[i],p));
 				puts(p);

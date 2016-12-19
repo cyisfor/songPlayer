@@ -451,6 +451,12 @@ CREATE TABLE queue (
     recording bigint
 );
 
+create table playlists(
+recording bigint references recordings(id) not null,
+list integer not null,
+which integer not null,
+unique(list,which));
+
 
 ALTER TABLE public.queue OWNER TO ion;
 
