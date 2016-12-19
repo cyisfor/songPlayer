@@ -42,16 +42,16 @@ bool declare_pid(const char* application_name) {
   const char* loc = get_pidloc();
   mkdir(loc,0700);
   chdir(loc);
-  int out = open(application_name,O_WRONLY|O_CREAT,0600);
+  int out = open(application_name,O_WRONLY|O_CREAT|O_TRUNC,0600);
   if(0 != lockf(out, F_TLOCK, 0)) {
 	if(errno == EACCES || errno == EAGAIN) {
 	  close(out);
 	  return false;
 	}
-	  
+
 	perror("Bad lock");
 	exit(23);
-  }  
+  }
   atexit(get_pid_done);
   char buf[0x100];
   ssize_t amt = snprintf(buf,0x100,"%d",getpid());

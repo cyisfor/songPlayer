@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <unistd.h> // sleep
 
 __thread PGconn* PQconn = NULL;
 const char* pq_application_name = "songplayer?";
@@ -53,6 +54,7 @@ bool pq_needed_reset(void) {
 	if(PQstatus(PQconn) == CONNECTION_OK) return false;
 	do {
 		PQreset(PQconn);
+		sleep(1);
 	} while(PQstatus(PQconn) != CONNECTION_OK);
 	return true;
 }

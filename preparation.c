@@ -10,6 +10,7 @@ struct preparation {
 	const char* name;
 	const char* query;
 	bool dirty;
+	pthread_t self;
 };
 
 preparation* memory = NULL;
@@ -60,9 +61,9 @@ PGresult *prepare_exec(preparation self,
 											self->name,
 											nParams,paramValues,paramLengths,paramFormats,resultFormat);
 		if(not_found(res)) {
-			/* when you prepare a statement in one thread, set dirty to false, then execute it in another
-				 thread, it needs to be prepared...
-				 how to conditionally clone a statement if it's not in the same thread? hmm...
+			/* when you prepare a statement in one thread, set dirty to false, then execute it
+				 in another thread, it needs to be prepared...
+				 how to conditionally clone a statement, if it's not in the same thread? hmm...
 			*/
 			doprepare(self);
 			PQclear(res);
@@ -80,8 +81,7 @@ PGresult *prepare_exec(preparation self,
 }
 
 preparation prepare(const char* query) {
-	++memn;
-	memory = realloc(memory,sizeof(preparation)*(memn));
+
 	char buf[0x100] = "P";
 	snprintf(buf+1,0x100-1,"%x",memn);
 	// have to malloc separately or the pointer we return will be invalid after the next realloc!
@@ -89,6 +89,7 @@ preparation prepare(const char* query) {
 	self->name = strdup(buf);
 	self->query = query;
 	self->dirty = true;
-	memory[memn-1] = self;
+	memory = realloc(memory,sizeof(preparation)*(memn+1));
+	memory[memn++] = self;
 	return self;
 }

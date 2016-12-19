@@ -24,6 +24,7 @@ int main(void) {
   }
   int pid = get_pid("player",sizeof("player")-1);
   if(pid < 0) return 1;
+	printf("player %d\n",pid);
 	
   gtk_init(NULL,NULL);
 
