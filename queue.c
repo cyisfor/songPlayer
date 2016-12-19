@@ -28,7 +28,7 @@ preparation updatePath = NULL;
 preparation getPath = NULL;
 preparation blacklist = NULL;
 preparation insertIntoQueue = NULL;
-preparation insertIntoQueuePath = NULL;
+preparation byPath = NULL;
 preparation numQueued = NULL;
 preparation _expireProblems = NULL;
 
@@ -282,7 +282,7 @@ void queuePrepare(void) {
 	resetRatings = prepare("DELETE FROM ratings");
 	// used by command line queueing utilities
 	insertIntoQueue = prepare("INSERT INTO queue (id,recording) SELECT coalesce(max(id)+1,0),$1 FROM queue");
-	insertIntoQueuePath = prepare("INSERT INTO queue (id,recording) select (SELECT coalesce(max(id)+1,0) FROM queue),id from recordings where path = $1");
+	byPath = prepare("select id from recordings where path = $1");
 }
 
 static void* queueChecker(void* arg) {
@@ -366,8 +366,10 @@ void enqueuePath(const char* path) {
     int len[] = {strlen(path)};
     const int fmt[] = { 0 };
     PGresult* result = 
-        prepare_exec(insertIntoQueuePath,
+        prepare_exec(byPath,
                    1,parameters,len,fmt,0);
     PQassert(result,(long int)result);
+		enqueue(PQgetvalue(result,0,0));
+		puts(PQgetvalue(result,0,0));
     PQclear(result);
 }
