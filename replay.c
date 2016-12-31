@@ -19,6 +19,6 @@ int main(int argc, char *argv[])
 	}
 	const char* recording = PQgetvalue(result,0,0);
 	printf("re-queueing %s\n",recording);
-	enqueue(recording);
+	enqueue(recording,PQgetlength(result,0,0));
 	return 0;
 }

@@ -41,10 +41,20 @@ int forkpipe(int notpipe[2]) {
     return pid;
 }
 
+preparation emptyHashes,
+	setHash,
+	_checkPath,
+	_findRecording,
+	updateRecording,
+	setPath,
+	setAlbum,
+	findSong,
+	findArtist,
+	findAlbum;
+
 static void fixEmptyHashes(void) {
     for(;;) {
-        PGresult* empties = logExecPrepared(PQconn,
-                                           "emptyHashes",
+        PGresult* empties = prepare_exec(emptyHashes,
                                            0,
                                            NULL,
                                            NULL,
@@ -64,8 +74,7 @@ static void fixEmptyHashes(void) {
             const char* values[2] = { id, h };
             int lengths[2] = { strlen(id), strlen(h) };
             int fmt[2] = { 0, 0 };
-            PQcheckClear(logExecPrepared(PQconn,
-                                   "setHash",
+            PQcheckClear(prepare_exec(setHash,
                                    2,
                                    values,
                                    lengths,
@@ -104,17 +113,6 @@ void setWhat(preparation what, const char* thing, const char* id) {
     PQassert(r,r && PQresultStatus(r)==PGRES_COMMAND_OK);
     PQclear(r);
 }
-
-preparation emptyHashes,
-	setHash,
-	_checkPath,
-	_findRecording,
-	updateRecording,
-	setPath,
-	setAlbum,
-	findSong,
-	findArtist,
-	findAlbum;
 
 char* findRecording(const char* song, const char* recorded, const char* artist, const char* path) {
     char* h = hash(path);
