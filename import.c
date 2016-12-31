@@ -143,17 +143,19 @@ void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
 
 PGresult* findRecording(string title, string artist, string album, string recorded, string path) {
 
-	const char* values[4] = { hash(path.base),
-														DERPVAL(song),
-														recorded.base,
-														DERPVAL(artist),
-														path.base};
-	int lengths[4] = { hash_length,
-										 DERPLEN(song),
+	const char* values[5] = { hash(path.base),
+														artist.base,
+														album.base,
+														recorded.base,														
+														path.base
+	};
+	int lengths[5] = { hash_length,
+										 artist.len,
+										 album.len,
 										 recorded.len,
-										 DERPLEN(artist),
-										 path.len};
-	int fmt[4] = { 0, 0, 0, 0, 0};
+										 path.len
+	};
+	int fmt[5] = { 0, 0, 0, 0, 0};
 	PGresult* id = prepare_exec(_findRecording,
 														 5,
 														 values,lengths,fmt,1);
@@ -309,14 +311,7 @@ int main(void) {
             printf("got date %s\n",recorded.base);
             // these are the ends you bring me to postgresql!
         }
-        PGresult* recording = findRecording(title,artist,album,recorded);
-        assert(recording);
-        setWhat(setPath,path,recording);
-        if(albumid) {
-            setWhatCsux(setAlbum,albumid,recording);
-						PQclear(albumid);
-				}
-				PQclear(recording);
+        PQcheckClear(findRecording(title,artist,album,recorded,path);
 
         PQcommit();
 
