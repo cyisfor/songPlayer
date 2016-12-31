@@ -141,22 +141,22 @@ void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
     PQclear(r);
 }
 
-PGresult* findRecording(PGresult* song, string recorded, PGresult* artist, string path) {
+PGresult* findRecording(string title, string artist, string album, string recorded, string path) {
 
 	const char* values[4] = { hash(path.base),
 														DERPVAL(song),
 														recorded.base,
-														DERPVAL(artist)};
+														DERPVAL(artist),
+														path.base};
 	int lengths[4] = { hash_length,
 										 DERPLEN(song),
 										 recorded.len,
-										 DERPLEN(artist)};
-	int fmt[4] = { 0, 1, 0, 1};
+										 DERPLEN(artist),
+										 path.len};
+	int fmt[4] = { 0, 0, 0, 0, 0};
 	PGresult* id = prepare_exec(_findRecording,
-														 4,
+														 5,
 														 values,lengths,fmt,1);
-	PQcheckClear(song);
-	PQcheckClear(artist);
 	PQassert(id,id&&PQresultStatus(id)==PGRES_TUPLES_OK);
 	return id;
 }
@@ -188,7 +188,7 @@ int main(void) {
 		_checkPath = prepare
 			("SELECT id FROM recordings WHERE path = $1" );
 		_findRecording = prepare
-			("SELECT findRecording($1::bytea,$2,$3,$4)");
+			("SELECT findRecording($1,$2,$3,$4,$5)");
 		updateRecording = prepare
 			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
 		setPath = prepare
@@ -285,9 +285,6 @@ int main(void) {
             title.base = NULL;
         }
 				if(title.base==NULL) {
-					const char* charset = libguess_determine_encoding(name.base,name.len,"Baltic");
-					puts(charset);
-					exit(23);
             title.base = name.base;
 						title.len = name.len;
         } else {
@@ -295,6 +292,10 @@ int main(void) {
             name.base = NULL;
         }
         printf("Whee '%s' '%s' '%s' '%d'\n",title.base,artist.base,album.base,date.tm_year);
+
+				const char* charset = libguess_determine_encoding(title.base,title.len,"Baltic");
+				puts(charset);
+				exit(23);
 
         PQbegin();
 

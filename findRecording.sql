@@ -68,7 +68,9 @@ END;
 $$;
 
 
-CREATE FUNCTION findRecording(_hash bytea, _title text, _artist text, _album text, _recorded timestamptz) RETURNS integer
+CREATE FUNCTION findRecording(_hash bytea, _title text, _artist text,
+			 _album text, _recorded timestamptz,
+			 _path bytea) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -94,8 +96,8 @@ BEGIN
 					end if;
 
             INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
-            INSERT INTO recordings (id, hash, song, recorded, artist, album) VALUES
-						  (_id, _hash,_songid,_recorded,_artid,_alid)
+            INSERT INTO recordings (id, hash, song, recorded, artist, album, path) VALUES
+						  (_id, _hash,_songid,_recorded,_artid,_alid,_path)
   						RETURNING id INTO _id;
             RETURN _id;
             EXCEPTION WHEN unique_violation THEN
