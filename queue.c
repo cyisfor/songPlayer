@@ -226,7 +226,7 @@ TRYAGAIN:
       struct stat buf;
 
       PGresult* exists = prepare_exec(getPath,
-              1,parameters,len,fmt,0);
+              1,parameters,len,fmt,1);
       if(!PQgetvalue(exists,0,0) ||
             (0!=stat(PQgetvalue(exists,0,0),&buf))) {
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));

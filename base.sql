@@ -311,10 +311,10 @@ CREATE TABLE ratings (
 );
 
 CREATE TABLE recordings (
-    id bigint not null references things(id),
-    artist bigint,
-    album bigint,
-    song bigint not null,
+    id bigint primary key not null references things(id) on delete cascade on update cascade,
+    artist bigint references artists(id) on delete cascade on update cascade,,
+    album bigint references albums(id) on delete cascade on update cascade,,
+    song bigint not null references songs(id) on delete cascade on update cascade,,
     recorded timestamp with time zone not null,
     plays integer not null DEFAULT 0,
     played timestamp with time zone,

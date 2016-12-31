@@ -23,7 +23,7 @@ static void nextSong(void) {
 																NULL,
 																1);
   gst_element_set_state (derpipe, GST_STATE_NULL);
-  if(PQntuples(next)==0) {
+  if(PQntuples(currentRecording)==0) {
       puts("All songs are replaygain analyzed.");
       exit(0);
   }
@@ -64,8 +64,6 @@ void setReplayGain(struct rginfo* info) {
 															lengths,
 															fmt,
 															0));
-    free(currentRecording);
-    currentRecording = NULL;
     info->numgot = 0;
 }
 

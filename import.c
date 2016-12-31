@@ -143,6 +143,8 @@ void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
 
 PGresult* findRecording(string title, string artist, string album, string recorded, string path) {
 
+	assert(path.len > 2);
+	
 	const char* values[6] = { hash(path.base),
 														title.base,
 														artist.base,
@@ -227,7 +229,8 @@ int main(void) {
 				};
         realpath(relpath,path.base);
         printf("real path %s\n",path.base);
-        if(checkPath(path)) continue;
+//        if(checkPath(path)) continue;
+				path.len = strlen(path.base);
 				string csux(void) {
 					char* name = strrchr(path.base,'/');
 					struct string csux = {};

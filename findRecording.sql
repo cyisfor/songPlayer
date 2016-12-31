@@ -12,7 +12,7 @@ BEGIN
         END IF;
 				BEGIN
 					INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
-          INSERT INTO songs (id, title) VALUES (_id, _song);
+          INSERT INTO songs (id, title) VALUES (_id, _title);
           RETURN _id;
         EXCEPTION WHEN unique_violation THEN
                 -- do nothing and loop
