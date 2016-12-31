@@ -5,7 +5,7 @@
 #include "preparation.h"
 #include "hash.h"
 
-#include "stringderp.h"
+#include "derpstring.h"
 
 #include <sys/wait.h> // waitpid
 
@@ -43,8 +43,8 @@ int forkpipe(int notpipe[2]) {
     return pid;
 }
 
-#define DERPVAL(a) PGgetvalue(a,0,0)
-#define DERPLEN(a) PGgetlength(a,0,0)
+#define DERPVAL(a) PQgetvalue(a,0,0)
+#define DERPLEN(a) PQgetlength(a,0,0)
 
 preparation emptyHashes,
 	setHash,
@@ -73,7 +73,6 @@ static void fixEmptyHashes(void) {
             char* id = PQgetvalue(empties,i,0);
 						char* path = PQgetvalue(empties,i,1);
             if(path[0]=='\0') continue;
-						path[PQgetlength(empties,i,1)]
 
             const char* values[2] = { id, hash(path) };
             int lengths[2] = { PQgetlength(empties,i,0), hash_length };
@@ -84,7 +83,6 @@ static void fixEmptyHashes(void) {
                                    lengths,
                                    fmt,
                                    1));
-            free(h);
         }
         PQcommit();
 				PQcheckClear(empties);
@@ -92,7 +90,7 @@ static void fixEmptyHashes(void) {
 
 }
 
-PGResult* findWhat(preparation what, string uniq) {
+PGresult* findWhat(preparation what, string uniq) {
     if(uniq.base==NULL) return NULL;
     const char* values[1] = { uniq.base };
     int lengths[1] = { uniq.len };
@@ -106,7 +104,7 @@ PGResult* findWhat(preparation what, string uniq) {
 }
 
 void setWhat(preparation what, string thing, PGresult* id) {
-    if(thing==NULL) return;
+    if(thing.base==NULL) return;
     const char* values[2] = { DERPVAL(id), thing.base };
     int lengths[2] = { DERPLEN(id), thing.len };
     int fmt[2] = { 1, 1 };
@@ -116,7 +114,7 @@ void setWhat(preparation what, string thing, PGresult* id) {
     PQassert(r,r && PQresultStatus(r)==PGRES_COMMAND_OK);
     PQclear(r);
 }
-void setWhatCsux(preparation what, PGResult* thing, string id) {
+void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
     if(thing==NULL) return;
     const char* values[2] = { DERPVAL(id), DERPVAL(thing) };
     int lengths[2] = { DERPLEN(id), DERPLEN(thing) };
@@ -128,12 +126,12 @@ void setWhatCsux(preparation what, PGResult* thing, string id) {
     PQclear(r);
 }
 
-PGresult* findRecording(PGResult* song, string recorded, PGResult* artist, string path) {
-	string csux = {
-		hash(path),
+PGresult* findRecording(PGresult* song, string recorded, PGresult* artist, string path) {
+	const string csux = {
+		hash(path.base),
 		hash_length
 	};
-	PGResult* id = findWhat(_findRecording,csux);
+	PGresult* id = findWhat(_findRecording,csux);
 
 	const char* values[4] = { DERPVAL(song), recorded.base, DERPVAL(artist), DERPVAL(id)};
 	int lengths[4] = { DERPLEN(song),
@@ -281,11 +279,11 @@ int main(void) {
 
         PQbegin();
 
-        PGResult* songid = findWhat(findSong,title);
+        PGresult* songid = findWhat(findSong,title);
         free(title.base);
-        PGResult* artistid = findWhat(findArtist,artist);
+        PGresult* artistid = findWhat(findArtist,artist);
         free(artist.base);
-        PGResult* albumid = findWhat(findAlbum,album);
+        PGresult* albumid = findWhat(findAlbum,album);
         free(album.base);
 
         PQcommit();

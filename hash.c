@@ -8,7 +8,7 @@
 #include <unistd.h> // read
 #include <sys/wait.h> // waitpid
 
-char* hash(const char* path) {
+const char* hash(const char* path) {
     static gcry_md_hd_t hd = NULL;
     gcry_error_t err;
     if(hd) {
@@ -26,5 +26,5 @@ char* hash(const char* path) {
         gcry_md_write(hd,buf,amt);
     }
     close(fd);
-    return (char*)gcry_md_read(hd,GCRY_MD_SHA256);
+		return (char*)gcry_md_read(hd,GCRY_MD_SHA256);
 }
