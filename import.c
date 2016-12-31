@@ -149,9 +149,9 @@ PGresult* findRecording(PGresult* song, string recorded, PGresult* artist, strin
 	return id;
 }
 
-bool checkPath(const char* path) {
-    const char* values[1] = { path };
-    int lengths[1] = { strlen(path) };
+bool checkPath(string path) {
+    const char* values[1] = { path.base };
+    int lengths[1] = { path.len };
     int fmt[1] = {1};
     PGresult* r = prepare_exec(_checkPath,
                                  1,
@@ -200,20 +200,24 @@ int main(void) {
         string album = {};
         struct tm date;
         ssize_t len = getline(&relpath,&pathamt,stdin);
-        char path[PATH_MAX];
 
         if(len<=0) break;
         if(relpath[len-1]=='\n')
             relpath[len-1] = '\0';
-        realpath(relpath,path);
-        printf("real path %s\n",path);
+				char derp[PATH_MAX];
+				string path = {
+					derp,
+					0
+				};
+        realpath(relpath,path.base);
+        printf("real path %s\n",path.base);
         if(checkPath(path)) continue;
 				string csux(void) {
 					char* name = strrchr(path,'/');
 					struct string csux = {};
 					if(name) {
-            char* dot = strrchr(path,'.');
-            long wheredot = (long)dot - (long)path;
+            char* dot = strrchr(path.base,'.');
+            long wheredot = (long)dot - (long)path.base;
             if(wheredot>7) {
                 if(memcmp(dot-7,".vorbis",7)==0)
                     dot = dot - 7;
@@ -228,7 +232,7 @@ int main(void) {
         int io[2];
         int pid = forkpipe(io);
         if(pid==0) {
-            execlp("ffmpeg","ffmpeg","-i",path,NULL);
+            execlp("ffmpeg","ffmpeg","-i",path.base,NULL);
             exit(23);
         }
         close(io[1]);
@@ -244,17 +248,17 @@ int main(void) {
             if(eqs==NULL) continue;
             *eqs = '\0';
             ++eqs; // the space
-            if(0==STRCMP(line,"title",len))
+            if(0==STRCMP(line,"title",len)) {
 							STRINGDUP(title,eqs+1,line+amt-(eqs+1));
-            else if(0==STRCMP(line,"artist",len))
+						} else if(0==STRCMP(line,"artist",len)) {
 							STRINGDUP(artist,eqs+1,line+amt-(eqs+1));
-            else if(0==STRCMP(line,"creation_time",len)) {
+						} else if(0==STRCMP(line,"creation_time",len)) {
                 memset(&date,0,sizeof(struct tm));
                 strptime(eqs+1,"%Y-%m-%d %H:%M:%S",&date);
                 gotDate = 1;
-            } else if(0==STRCMP(line,"album",len))
+            } else if(0==STRCMP(line,"album",len)) {
 							STRINGDUP(album,eqs+1,line+amt-(eqs+1));
-
+						}
             if(artist.base && title.base && album.base && gotDate) break;
         }
         if(gotDate==0) {
@@ -296,7 +300,7 @@ int main(void) {
             strcat(template,".%d");
             recorded.base = alloca(0x40);
             recorded.len = snprintf(recorded.base,0x40,template,random());
-            printf("got date %s\n",recorded);
+            printf("got date %s\n",recorded.base);
             // these are the ends you bring me to postgresql!
         }
         PGresult* recording = findRecording(songid,recorded,artistid,path);

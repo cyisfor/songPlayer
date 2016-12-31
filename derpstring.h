@@ -8,10 +8,11 @@ typedef struct string {
 	ssize_t len;
 } string;
 
-#define STRINGDUP(s,start,len) {								\
-		s.base = malloc(len);												\
-		memcpy(s.base,start,len);										\
-		s.len = len;																\
+void* memdup(void* m, ssize_t l);
+
+#define STRINGDUP(s,start,ashtlen) {								\
+		s.base = memdup(start,ashtlen);									\
+		s.len = ashtlen;																\
 	}
 
 #define UNSTR(s) s.base, s.len
