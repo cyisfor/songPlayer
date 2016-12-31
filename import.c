@@ -112,8 +112,7 @@ PGresult* findWhatArgh(preparation what, string uniq) {
     int fmt[1] = { 0 };
 		printf("mtat %s %d\n",uniq.base,uniq.base[uniq.len-1]);
     PGresult* r = prepare_exec(what,
-															 1,
-															 values, lengths, fmt, 1);
+															 1,values, lengths, fmt, 1);
     PQassert(r,r && PQresultStatus(r)==PGRES_TUPLES_OK);
     assert(PQntuples(r)==1);
 		return r;
@@ -152,14 +151,13 @@ PGresult* findRecording(PGresult* song, string recorded, PGresult* artist, strin
 										 DERPLEN(song),
 										 recorded.len,
 										 DERPLEN(artist)};
-	int fmt[4] = { 1, 1, 1, 1};
+	int fmt[4] = { 0, 1, 0, 1};
 	PGresult* id = prepare_exec(_findRecording,
 														 4,
 														 values,lengths,fmt,1);
 	PQcheckClear(song);
 	PQcheckClear(artist);
-	PQassert(r,r&&PQresultStatus(r)==PGRES_COMMAND_OK);
-	PQclear(r);
+	PQassert(id,id&&PQresultStatus(id)==PGRES_TUPLES_OK);
 	return id;
 }
 
@@ -190,7 +188,7 @@ int main(void) {
 		_checkPath = prepare
 			("SELECT id FROM recordings WHERE path = $1" );
 		_findRecording = prepare
-			("SELECT selinsThingRecordings($1,$2,$3,$4)");
+			("SELECT findRecording($1::bytea,$2,$3,$4)");
 		updateRecording = prepare
 			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
 		setPath = prepare
@@ -300,16 +298,6 @@ int main(void) {
 
         PQbegin();
 
-        PGresult* songid = findWhatArgh(findSong,title);
-        free(title.base);
-        PGresult* artistid = findWhatArgh(findArtist,artist);
-        free(artist.base);
-        PGresult* albumid = findWhatArgh(findAlbum,album);
-        free(album.base);
-
-        PQcommit();
-        PQbegin();
-
         string recorded = {};
         if(gotDate) {
             char* template = alloca(0x26); // bleh
@@ -320,10 +308,8 @@ int main(void) {
             printf("got date %s\n",recorded.base);
             // these are the ends you bring me to postgresql!
         }
-        PGresult* recording = findRecording(songid,recorded,artistid,path);
+        PGresult* recording = findRecording(title,artist,album,recorded);
         assert(recording);
-        PQclear(songid);
-        PQclear(artistid);
         setWhat(setPath,path,recording);
         if(albumid) {
             setWhatCsux(setAlbum,albumid,recording);
