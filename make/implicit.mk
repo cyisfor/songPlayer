@@ -13,7 +13,7 @@ o/%.glade.ch: %.glade.xml
 
 lib/%.so: | lib
 	$(call status,LIBRARY, $*)
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^)
+	$(CC) $(CFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^) $(LDFLAGS)
 
 deps/%.d: %.c
 	$(call status, DEPS, $*)
@@ -31,4 +31,4 @@ lib bin:
 
 $(PROGLOCS): bin/%: o/%.o
 	$(call status, PROGRAM, $*)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(TARGETLIBS) -o $@ $(filter %.o %.so,$^)
+	$(CC) $(CFLAGS) -o $@ $(filter %.o %.so,$^) $(LDFLAGS) $(TARGETLIBS)

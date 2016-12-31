@@ -65,6 +65,22 @@ o/:
 	$(call status, MKDIR,$@)
 	mkdir $@
 
+bin/import: o/libguess.a
+bin/import: LDFLAGS:=$(LDFLAGS) o/libguess.a
+
+o/libguess.a: checklg
+	ar crs $@ $(patsubst %.c, %.o, libguess/src/libguess/*.c)
+
+checklg: libguess/Makefile
+	cd libguess && make
+
+libguess/Makefile: libguess/configure
+	cd libguess && ./configure
+	touch $@
+
+libguess/configure: libguess/configure.ac
+	cd libguess && sh autogen.sh
+
 $(REBUILD): | o/
 	touch $@
 
@@ -78,7 +94,7 @@ o/current.o: o/current.glade.ch
 
 o/nowplaying.o: o/nowplaying.fields.ch
 
-o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make 
+io/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make 
 	$(call status, FIELDING, nowplaying)
 	./bin/nowplaying-make <nowplaying.fields.conf >$@.temp
 	mv $@.temp $@

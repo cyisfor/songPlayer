@@ -1,6 +1,7 @@
 #define _XOPEN_SOURCE 900      /* See feature_test_macros(7) */
 #define _GNU_SOURCE
 
+#include "libguess/libguess.h"
 #include "pq.h"
 #include "preparation.h"
 #include "hash.h"
