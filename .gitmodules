@@ -1,3 +1,6 @@
 [submodule "http-parser"]
 	path = http-parser
 	url = https://github.com/nodejs/http-parser
+[submodule "libguess"]
+	path = libguess
+	url = https://github.com/kaniini/libguess

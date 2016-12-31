@@ -156,6 +156,13 @@ BEGIN
 END;
 $$;
 
+
+ALTER FUNCTION public.songwasplayed(_recording bigint) OWNER TO ion;
+
+--
+-- Name: tag(bigint, name[], double precision); Type: FUNCTION; Schema: public; Owner: ion
+--
+
 CREATE FUNCTION tag(_blue bigint, _tags name[], strength double precision) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -276,15 +283,15 @@ CREATE TABLE ratings (
 );
 
 CREATE TABLE recordings (
-    id bigint NOT NULL,
+    id bigint not null references things(id),
     artist bigint,
     album bigint,
-    song bigint,
-    recorded timestamp with time zone,
-    plays integer DEFAULT 0,
+    song bigint not null,
+    recorded timestamp with time zone not null,
+    plays integer not null DEFAULT 0,
     played timestamp with time zone,
-    hash text,
-    path bytea
+    hash bytea unique not null,
+    path bytea not null
 );
 
 

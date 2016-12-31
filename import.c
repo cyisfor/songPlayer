@@ -213,7 +213,7 @@ int main(void) {
         printf("real path %s\n",path.base);
         if(checkPath(path)) continue;
 				string csux(void) {
-					char* name = strrchr(path,'/');
+					char* name = strrchr(path.base,'/');
 					struct string csux = {};
 					if(name) {
             char* dot = strrchr(path.base,'.');
@@ -273,6 +273,9 @@ int main(void) {
             title.base = NULL;
         }
 				if(title.base==NULL) {
+					const char* charset = libguess_determine_encoding(name.base,name.len,"Baltic");
+					puts(charset);
+					exit(23);
             title.base = name.base;
 						title.len = name.len;
         } else {

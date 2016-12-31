@@ -8,7 +8,7 @@ typedef struct string {
 	ssize_t len;
 } string;
 
-void* memdup(void* m, ssize_t l);
+void* memdup(const void* m, ssize_t l);
 
 #define STRINGDUP(s,start,ashtlen) {								\
 		s.base = memdup(start,ashtlen);									\
