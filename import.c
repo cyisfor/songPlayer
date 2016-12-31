@@ -5,6 +5,8 @@
 #include "preparation.h"
 #include "hash.h"
 
+#include "stringderp.h"
+
 #include <sys/wait.h> // waitpid
 
 #include <stdio.h>
@@ -87,11 +89,11 @@ static void fixEmptyHashes(void) {
 
 }
 
-char* findWhat(preparation what, const char* uniq) {
+char* findWhatB(preparation what, const char* uniq, ssize_t len) {
     if(uniq==NULL) return NULL;
     const char* values[1] = { uniq };
-    int lengths[1] = { strlen(uniq) };
-    int fmt[1] = { 0 };
+    int lengths[1] = { len };
+    int fmt[1] = { 1 };
     PGresult* r = prepare_exec(what,
 															 1,
 															 values, lengths, fmt, 0);
@@ -102,11 +104,13 @@ char* findWhat(preparation what, const char* uniq) {
     return id;
 }
 
-void setWhat(preparation what, const char* thing, const char* id) {
+#define findWhat(a,b) findWhatB(a,b,strlen(b))
+
+void setWhat(preparation what, const char* thing, ssize_t len, const char* id) {
     if(thing==NULL) return;
     const char* values[2] = { id, thing };
-    int lengths[2] = { strlen(id), strlen(thing) };
-    int fmt[2] = { 0, 0 };
+    int lengths[2] = { strlen(id), len };
+    int fmt[2] = { 0, 1 };
     PGresult* r = prepare_exec(what,
 															 2,
 															 values, lengths, fmt, 0);
@@ -115,9 +119,7 @@ void setWhat(preparation what, const char* thing, const char* id) {
 }
 
 char* findRecording(const char* song, const char* recorded, const char* artist, const char* path) {
-    char* h = hash(path);
-    printf("Hash: %s Path: %s\n",h,path);
-    char* id = findWhat(_findRecording,h);
+    char* id = findWhatB(_findRecording,hash(path),hash_length);
 
     const char* values[4] = { song, recorded, artist, id};
     int lengths[4] = { strlen(song), recorded ? strlen(recorded) : 0, artist ? strlen(artist) : 0, strlen(id) };
@@ -177,9 +179,9 @@ int main(void) {
     size_t amt = 0;
     size_t pathamt = 0;
     for(;;) {
-        char *title = NULL;
-        char *artist = NULL;
-        char *album = NULL;
+        string title = {};
+        string artist = {};
+        string album = {};
         struct tm date;
         ssize_t len = getline(&relpath,&pathamt,stdin);
         char path[PATH_MAX];
@@ -219,16 +221,16 @@ int main(void) {
             if(eqs==NULL) continue;
             *eqs = '\0';
             ++eqs; // the space
-            if(0==STRCMP(line,"title",len))
-                title = strdup(eqs+1);
+            if(0==STRCMP(line,"title",len)) 
+							STRINGDUP(title,eqs+1,line+amt-(eqs+1));
             else if(0==STRCMP(line,"artist",len))
-                artist = strdup(eqs+1);
+							STRINGDUP(artist,eqs+1,line+amt-(eqs+1));
             else if(0==STRCMP(line,"creation_time",len)) {
                 memset(&date,0,sizeof(struct tm));
                 strptime(eqs+1,"%Y-%m-%d %H:%M:%S",&date);
                 gotDate = 1;
             } else if(0==STRCMP(line,"album",len))
-                album = strdup(eqs+1);
+							album = STRINGDUP(title,eqs+1,line+amt-(eqs+1));
 
             if(artist && title && album && gotDate) break;
         }
@@ -256,12 +258,12 @@ int main(void) {
 
         PQbegin();
 
-        char* songid = findWhat(findSong,title);
-        free(title);
-        char* artistid = findWhat(findArtist,artist);
-        free(artist);
-        char* albumid = findWhat(findAlbum,album);
-        free(album);
+        char* songid = findWhat(findSong,UNSTR(title));
+        free(title.base);
+        char* artistid = findWhat(findArtist,UNSTR(artist));
+        free(artist.base);
+        char* albumid = findWhat(findAlbum,UNSTR(album));
+        free(album.base);
 
         PQcommit();
         PQbegin();
