@@ -106,6 +106,34 @@ END;
 $$;
 
 
+CREATE FUNCTION selinsthingrecordings(_hash bytea, _title text, _song int, ) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+_id integer;
+BEGIN
+    LOOP
+        -- first try to find it
+        SELECT id INTO _id FROM recordings WHERE hash = _hash;
+        -- check if the row is found
+        IF FOUND THEN
+            RETURN _id;
+        END IF;
+        BEGIN
+            INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
+            INSERT INTO recordings (id, hash) VALUES (_id, _hash) RETURNING id INTO _id;
+            RETURN _id;
+            EXCEPTION WHEN unique_violation THEN
+                -- do nothing and loop
+        END;
+    END LOOP;
+END;
+$$;
+
+
+
+
+
 ALTER FUNCTION public.selinsthingartists(_name text) OWNER TO ion;
 
 CREATE FUNCTION selinsthingsongs(_title text) RETURNS integer

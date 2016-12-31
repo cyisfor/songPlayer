@@ -143,19 +143,17 @@ void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
 }
 
 PGresult* findRecording(PGresult* song, string recorded, PGresult* artist, string path) {
-	const string csux = {
-		hash(path.base),
-		hash_length
-	};
-	PGresult* id = findWhat(_findRecording,csux);
 
-	const char* values[4] = { DERPVAL(song), recorded.base, DERPVAL(artist), DERPVAL(id)};
-	int lengths[4] = { DERPLEN(song),
+	const char* values[4] = { hash(path.base),
+														DERPVAL(song),
+														recorded.base,
+														DERPVAL(artist)};
+	int lengths[4] = { hash_length,
+										 DERPLEN(song),
 										 recorded.len,
-										 DERPLEN(artist),
-										 DERPLEN(id) };
+										 DERPLEN(artist)};
 	int fmt[4] = { 1, 1, 1, 1};
-	PGresult* r = prepare_exec(updateRecording,
+	PGresult* id = prepare_exec(_findRecording,
 														 4,
 														 values,lengths,fmt,1);
 	PQcheckClear(song);
@@ -192,7 +190,7 @@ int main(void) {
 		_checkPath = prepare
 			("SELECT id FROM recordings WHERE path = $1" );
 		_findRecording = prepare
-			("SELECT selinsThingRecordings($1)");
+			("SELECT selinsThingRecordings($1,$2,$3,$4)");
 		updateRecording = prepare
 			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
 		setPath = prepare
