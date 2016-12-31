@@ -10,32 +10,30 @@
 
 preparation nextRGlessRecording = NULL;
 
-char* currentRecording = NULL;
+PGresult* currentRecording = NULL;
 
 GstElement* src = NULL;
 GstElement* derpipe = NULL;
 static void nextSong(void) {
-	PGresult* next = prepare_exec(nextRGlessRecording,
+	PQclear(currentRecording);
+	currentRecording = prepare_exec(nextRGlessRecording,
 																0,
 																NULL,
 																NULL,
 																NULL,
-																0);
+																1);
   gst_element_set_state (derpipe, GST_STATE_NULL);
   if(PQntuples(next)==0) {
       puts("All songs are replaygain analyzed.");
       exit(0);
   }
-  char* path = PQgetvalue(next,0,0);
+  char* path = PQgetvalue(currentRecording,0,1);
   struct stat buf;
   if(stat(path,&buf)!=0) {
       g_print("(error file-not-found \"%s\")\n",path);
-      PQclear(next);
   } else {
       g_object_set (src, "location", path, NULL);
-      currentRecording = strdup(PQgetvalue(next,0,1));
-      g_message("Examining %s %s\n",currentRecording,path);
-      PQclear(next);
+      g_message("Examining %s\n",path);
       gst_element_set_state (derpipe, GST_STATE_PLAYING);
   }
 }
@@ -57,9 +55,9 @@ void setReplayGain(struct rginfo* info) {
     guint glen = snprintf(gain,0x400,"%lf",info->gain);
     guint llen = snprintf(level,0x400,"%lf",info->level);
 
-    const char* values[] = { currentRecording, peak, gain, level };
-    int lengths[] = { strlen(currentRecording), plen, glen, llen };
-    int fmt[] = { 0, 0, 0, 0 };
+    const char* values[] = { PQgetvalue(currentRecording,0,0), peak, gain, level };
+    int lengths[] = { PQgetlength(currentRecording,0,0), plen, glen, llen };
+    int fmt[] = { 1, 0, 0, 0 };
     PQcheckClear(prepare_exec(_setReplayGain,
 															4,
 															values,
@@ -183,7 +181,7 @@ main (int argc, char ** argv)
 {
 	PQinit();
 	nextRGlessRecording = prepare
-		("SELECT path,recordings.id FROM recordings LEFT OUTER JOIN replaygain ON replaygain.id = recordings.id WHERE replaygain.id IS NULL");
+		("SELECT recordings.id,path FROM recordings LEFT OUTER JOIN replaygain ON replaygain.id = recordings.id WHERE replaygain.id IS NULL");
 	_setReplayGain = prepare
 		("INSERT INTO replaygain (id,peak,gain,level) VALUES ($1,$2,$3,$4)");
 

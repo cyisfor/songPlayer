@@ -143,21 +143,23 @@ void setWhatCsux(preparation what, PGresult* thing, PGresult* id) {
 
 PGresult* findRecording(string title, string artist, string album, string recorded, string path) {
 
-	const char* values[5] = { hash(path.base),
+	const char* values[6] = { hash(path.base),
+														title.base,
 														artist.base,
 														album.base,
 														recorded.base,														
 														path.base
 	};
-	int lengths[5] = { hash_length,
+	int lengths[6] = { hash_length,
+										 title.len,
 										 artist.len,
 										 album.len,
 										 recorded.len,
 										 path.len
 	};
-	int fmt[5] = { 0, 0, 0, 0, 0};
+	int fmt[6] = { 1, 0, 0, 0, 0, 1};
 	PGresult* id = prepare_exec(_findRecording,
-														 5,
+														 6,
 														 values,lengths,fmt,1);
 	PQassert(id,id&&PQresultStatus(id)==PGRES_TUPLES_OK);
 	return id;
@@ -190,7 +192,7 @@ int main(void) {
 		_checkPath = prepare
 			("SELECT id FROM recordings WHERE path = $1" );
 		_findRecording = prepare
-			("SELECT findRecording($1,$2,$3,$4,$5)");
+			("SELECT findRecording($1,$2,$3,$4,$5,$6)");
 		updateRecording = prepare
 			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
 		setPath = prepare
@@ -296,8 +298,10 @@ int main(void) {
         printf("Whee '%s' '%s' '%s' '%d'\n",title.base,artist.base,album.base,date.tm_year);
 
 				const char* charset = libguess_determine_encoding(title.base,title.len,"Baltic");
-				puts(charset);
-				exit(23);
+				if(0!=strcmp(charset,"UTF-8")) {
+					puts(charset);
+					exit(23);
+				}
 
         PQbegin();
 
@@ -311,7 +315,7 @@ int main(void) {
             printf("got date %s\n",recorded.base);
             // these are the ends you bring me to postgresql!
         }
-        PQcheckClear(findRecording(title,artist,album,recorded,path);
+        PQcheckClear(findRecording(title,artist,album,recorded,path));
 
         PQcommit();
 

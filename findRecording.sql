@@ -1,4 +1,4 @@
-CREATE FUNCTION findSong(_title text) RETURNS integer 
+CREATE OR REPLACE FUNCTION findSong(_title text) RETURNS integer 
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -6,13 +6,13 @@ _id bigint;
 BEGIN
     LOOP
         -- first try to find it
-        SELECT id INTO _id FROM songs WHERE name = _title;
+        SELECT id INTO _id FROM songs WHERE title = _title;
 				IF FOUND THEN
             RETURN _id;
         END IF;
 				BEGIN
 					INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
-          INSERT INTO songs (id, name) VALUES (_id, _song);
+          INSERT INTO songs (id, title) VALUES (_id, _song);
           RETURN _id;
         EXCEPTION WHEN unique_violation THEN
                 -- do nothing and loop
@@ -21,7 +21,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION findArtist(_artist text) RETURNS integer 
+CREATE OR REPLACE FUNCTION findArtist(_artist text) RETURNS integer 
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -44,7 +44,7 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION findAlbum(_album text) RETURNS integer 
+CREATE OR REPLACE FUNCTION findAlbum(_album text) RETURNS integer 
     LANGUAGE plpgsql
     AS $$
 DECLARE
@@ -52,13 +52,13 @@ _id bigint;
 BEGIN
     LOOP
         -- first try to find it
-        SELECT id INTO _id FROM albums WHERE name = _album;
+        SELECT id INTO _id FROM albums WHERE title = _album;
 				IF FOUND THEN
             RETURN _id;
         END IF;
 				BEGIN
 					INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
-          INSERT INTO albums (id, name) VALUES (_id, _album);
+          INSERT INTO albums (id, title) VALUES (_id, _album);
           RETURN _id;
         EXCEPTION WHEN unique_violation THEN
                 -- do nothing and loop
@@ -68,7 +68,7 @@ END;
 $$;
 
 
-CREATE FUNCTION findRecording(_hash bytea, _title text, _artist text,
+CREATE OR REPLACE FUNCTION findRecording(_hash bytea, _title text, _artist text,
 			 _album text, _recorded timestamptz,
 			 _path bytea) RETURNS integer
     LANGUAGE plpgsql
@@ -92,7 +92,7 @@ BEGIN
 						 select findArtist(_artist) into _artid;
 					end if;
 					if _album is not null then
-						 select findAlbum(_albul) into _alid;
+						 select findAlbum(_album) into _alid;
 					end if;
 
             INSERT INTO things DEFAULT VALUES RETURNING id INTO _id;
