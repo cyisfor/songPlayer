@@ -151,7 +151,7 @@ static PGresult* pickBestRecording(void) {
 
     result2 =
       prepare_exec(bestRecording,
-                     2,values,lengths,fmt,0);
+                     2,values,lengths,fmt,1);
   }
 
   rows = PQntuples(result2);
@@ -222,11 +222,12 @@ TRYAGAIN:
   g_message("Making sure exists");
   { const char* parameters[] = { PQgetvalue(result,0,0), "path not found" };
       int len[] = { PQgetlength(result,0,0), sizeof("path not found") };
-      const int fmt[] = { 0, 0 };
+      const int fmt[] = { 1, 0 };
       struct stat buf;
 
       PGresult* exists = prepare_exec(getPath,
               1,parameters,len,fmt,1);
+			g_warning("tnnnn %s\n",PQgetvalue(exists,0,0));
       if(!PQgetvalue(exists,0,0) ||
             (0!=stat(PQgetvalue(exists,0,0),&buf))) {
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
@@ -244,11 +245,11 @@ TRYAGAIN:
 
   g_message("Inserting %s",PQgetvalue(result,0,0));
   const char* parameters[] = { PQgetvalue(result,0,0) };
-  int len[] =  { strlen(parameters[0]) };
-  const int fmt[] = { 0 };
+  int len[] =  { PQgetlength(result,0,0) };
+  const int fmt[] = { 1 };
   PGresult* result2 =
     prepare_exec(insertIntoQueue,
-                   1,parameters,len,fmt,0);
+                   1,parameters,len,fmt,1);
   PQclear(result);
   PQassert(result2,(long int)result2);
   PQclear(result2);

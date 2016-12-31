@@ -271,7 +271,8 @@ static gboolean on_activate(GstPad* pad, GstObject* parent) {
   return TRUE;
 }
 
-preparation getTopRecording = NULL;
+preparation pgsucks = NULL,
+	getTopRecording = NULL;
 
 /* Note: will restart the current song if called. */
 
@@ -296,11 +297,12 @@ void playerPlay(void) {
   int cols = PQnfields(result);
   fprintf(stderr,"rows %x cols %x\n",rows,cols);
   PQassert(result,rows>=1 && cols==5);
-  char* end;
+
+	char* end;
 
   char* recording = PQgetvalue(result,0,0);
-  uint32_t id = strtol(recording,&end,10);
-  fprintf(stderr,"ID %x %x\n",id,lastId);
+  uint32_t id = strtol(recording,&end,10); // gee, text protocol sure is simple and intuitive
+  fprintf(stderr,"ID %x %x\n",id,lastId); 
 
   if (id==lastId) {
     fprintf(stderr,"(error repeated-song #x%x)\n",id);
@@ -315,7 +317,19 @@ void playerPlay(void) {
   g_activate_gain.gain = g_ascii_strtod(PQgetvalue(result,0,1),&end);
   g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,2),&end);
   g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,3),&end);
-  nextSong(PQgetvalue(result,0,4));
+
+	PGResult* pres = NULL;
+	{
+		const char val[1] = { PQgetvalue(result,0,0) };
+		const char len[1] = { PQgetlength(result,0,0) };
+		const char fmt[1] = { 0 };
+		// path has to be binary, or we have to hex decode it!
+		pres = prepare_exec(pgsucks,
+																	1,val,len,fmt,1);
+	}
+
+  nextSong(PQgetvalue(pres,0,0));
+	PQclear(pres);
  CLEAR:
   PQclear(result);
 }
@@ -399,10 +413,12 @@ int main (int argc, char ** argv)
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);
 
+	pgsucks = prepare
+		("SELECT path FROM recordings WHERE id = $1");
+	
 	getTopRecording = prepare
 		("SELECT queue.recording,"
-		 "replaygain.gain,replaygain.peak,replaygain.level,"
-		 "recordings.path "
+		 "replaygain.gain,replaygain.peak,replaygain.level"
 		 "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1");
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
