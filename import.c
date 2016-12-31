@@ -96,6 +96,21 @@ PGresult* findWhat(preparation what, string uniq) {
     const char* values[1] = { uniq.base };
     int lengths[1] = { uniq.len };
     int fmt[1] = { 1 };
+		printf("mtat %s %d\n",uniq.base,uniq.base[uniq.len-1]);
+    PGresult* r = prepare_exec(what,
+															 1,
+															 values, lengths, fmt, 1);
+    PQassert(r,r && PQresultStatus(r)==PGRES_TUPLES_OK);
+    assert(PQntuples(r)==1);
+		return r;
+}
+
+PGresult* findWhatArgh(preparation what, string uniq) {
+    if(uniq.base==NULL) return NULL;
+    const char* values[1] = { uniq.base };
+    int lengths[1] = { uniq.len };
+    int fmt[1] = { 0 };
+		printf("mtat %s %d\n",uniq.base,uniq.base[uniq.len-1]);
     PGresult* r = prepare_exec(what,
 															 1,
 															 values, lengths, fmt, 1);
@@ -250,15 +265,15 @@ int main(void) {
             *eqs = '\0';
             ++eqs; // the space
             if(0==STRCMP(line,"title",len)) {
-							STRINGDUP(title,eqs+1,line+amt-(eqs+1));
+							STRINGDUP(title,eqs+1,line+amt-(eqs+3));
 						} else if(0==STRCMP(line,"artist",len)) {
-							STRINGDUP(artist,eqs+1,line+amt-(eqs+1));
+							STRINGDUP(artist,eqs+1,line+amt-(eqs+3));
 						} else if(0==STRCMP(line,"creation_time",len)) {
                 memset(&date,0,sizeof(struct tm));
                 strptime(eqs+1,"%Y-%m-%d %H:%M:%S",&date);
                 gotDate = 1;
             } else if(0==STRCMP(line,"album",len)) {
-							STRINGDUP(album,eqs+1,line+amt-(eqs+1));
+							STRINGDUP(album,eqs+1,line+amt-(eqs+3));
 						}
             if(artist.base && title.base && album.base && gotDate) break;
         }
@@ -287,11 +302,11 @@ int main(void) {
 
         PQbegin();
 
-        PGresult* songid = findWhat(findSong,title);
+        PGresult* songid = findWhatArgh(findSong,title);
         free(title.base);
-        PGresult* artistid = findWhat(findArtist,artist);
+        PGresult* artistid = findWhatArgh(findArtist,artist);
         free(artist.base);
-        PGresult* albumid = findWhat(findAlbum,album);
+        PGresult* albumid = findWhatArgh(findAlbum,album);
         free(album.base);
 
         PQcommit();
