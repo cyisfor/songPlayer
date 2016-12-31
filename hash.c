@@ -40,5 +40,5 @@ char* hash(const char* path) {
         gcry_md_write(hd,buf,amt);
     }
     close(fd);
-    return hexencode((char*)gcry_md_read(hd,GCRY_MD_SHA256));
+    return (char*)gcry_md_read(hd,GCRY_MD_SHA256);
 }

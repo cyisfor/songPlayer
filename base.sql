@@ -1,46 +1,9 @@
---
--- PostgreSQL database dump
---
-
-SET statement_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner:
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner:
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
-SET search_path = public, pg_catalog;
-
---
--- Name: connectiontimesboo; Type: TYPE; Schema: public; Owner: ion
---
-
 CREATE TYPE connectiontimesboo AS (
 	song bigint,
 	played timestamp with time zone,
 	diff interval,
 	strength double precision
 );
-
-
-ALTER TYPE public.connectiontimesboo OWNER TO ion;
-
---
--- Name: ratingboo; Type: TYPE; Schema: public; Owner: ion
---
 
 CREATE TYPE ratingboo AS (
 	rating bigint,
@@ -51,20 +14,6 @@ CREATE TYPE ratingboo AS (
 	depth integer
 );
 
-
-ALTER TYPE public.ratingboo OWNER TO ion;
-
---
--- Name: connectionstrength(bigint, bigint, double precision, boolean); Type: FUNCTION; Schema: public; Owner: ion
---
-
-
-
-ALTER FUNCTION public.connectionstrength(_red bigint, _blue bigint, _strength double precision, _incrementally boolean) OWNER TO ion;
-
---
--- Name: rate(integer, double precision); Type: FUNCTION; Schema: public; Owner: ion
---
 
 CREATE FUNCTION rate(_rating integer, _adjust double precision) RETURNS SETOF ratingboo
     LANGUAGE plpgsql
@@ -77,13 +26,6 @@ BEGIN
 	END LOOP;
 END;
 $$;
-
-
-ALTER FUNCTION public.rate(_rating integer, _adjust double precision) OWNER TO ion;
-
---
--- Name: ratefeep(bigint, double precision, integer); Type: FUNCTION; Schema: public; Owner: ion
---
 
 CREATE FUNCTION ratefeep(_rating bigint, _adjust double precision, _depth integer) RETURNS SETOF ratingboo
     LANGUAGE plpgsql
@@ -114,12 +56,6 @@ END;
 $$;
 
 
-ALTER FUNCTION public.ratefeep(_rating bigint, _adjust double precision, _depth integer) OWNER TO ion;
-
---
--- Name: selinsthingalbums(text); Type: FUNCTION; Schema: public; Owner: ion
---
-
 CREATE FUNCTION selinsthingalbums(_title text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
@@ -144,12 +80,6 @@ BEGIN
 END;
 $$;
 
-
-ALTER FUNCTION public.selinsthingalbums(_title text) OWNER TO ion;
-
---
--- Name: selinsthingartists(text); Type: FUNCTION; Schema: public; Owner: ion
---
 
 CREATE FUNCTION selinsthingartists(_name text) RETURNS integer
     LANGUAGE plpgsql
@@ -178,10 +108,6 @@ $$;
 
 ALTER FUNCTION public.selinsthingartists(_name text) OWNER TO ion;
 
---
--- Name: selinsthingsongs(text); Type: FUNCTION; Schema: public; Owner: ion
---
-
 CREATE FUNCTION selinsthingsongs(_title text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
@@ -206,13 +132,6 @@ BEGIN
 END;
 $$;
 
-
-ALTER FUNCTION public.selinsthingsongs(_title text) OWNER TO ion;
-
---
--- Name: setpid(integer, integer); Type: FUNCTION; Schema: public; Owner: ion
---
-
 CREATE FUNCTION setpid(_who integer, _pid integer) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -223,13 +142,6 @@ EXCEPTION
         UPDATE pids SET pid = _pid WHERE id = _who;
 END;
 $$;
-
-
-ALTER FUNCTION public.setpid(_who integer, _pid integer) OWNER TO ion;
-
---
--- Name: songwasplayed(bigint); Type: FUNCTION; Schema: public; Owner: ion
---
 
 CREATE FUNCTION songwasplayed(_recording bigint) RETURNS void
     LANGUAGE plpgsql
@@ -243,13 +155,6 @@ BEGIN
         UPDATE songs SET played = _now, plays = plays + 1 WHERE id = (SELECT song FROM recordings WHERE id = _recording);
 END;
 $$;
-
-
-ALTER FUNCTION public.songwasplayed(_recording bigint) OWNER TO ion;
-
---
--- Name: tag(bigint, name[], double precision); Type: FUNCTION; Schema: public; Owner: ion
---
 
 CREATE FUNCTION tag(_blue bigint, _tags name[], strength double precision) RETURNS void
     LANGUAGE plpgsql
@@ -284,48 +189,16 @@ BEGIN
 END;
 $$;
 
-
-ALTER FUNCTION public.tag(_blue bigint, _tags name[], strength double precision) OWNER TO ion;
-
---
--- Name: timeconnectionthingy(bigint); Type: FUNCTION; Schema: public; Owner: ion
---
-
-
-ALTER FUNCTION public.timeconnectionthingy(_timethingy bigint) OWNER TO ion;
-
-SET default_tablespace = '';
-
-SET default_with_oids = false;
-
---
--- Name: albums; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
-
 CREATE TABLE albums (
     id bigint NOT NULL,
     recorded timestamp with time zone,
     title text
 );
 
-
-ALTER TABLE public.albums OWNER TO ion;
-
---
--- Name: artists; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
-
 CREATE TABLE artists (
     id bigint NOT NULL,
     name text
 );
-
-
-ALTER TABLE public.artists OWNER TO ion;
-
---
--- Name: connections; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
 
 CREATE TABLE connections (
     id bigint NOT NULL,
@@ -334,13 +207,6 @@ CREATE TABLE connections (
     strength double precision
 );
 
-
-ALTER TABLE public.connections OWNER TO ion;
-
---
--- Name: connections_id_seq; Type: SEQUENCE; Schema: public; Owner: ion
---
-
 CREATE SEQUENCE connections_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -348,51 +214,18 @@ CREATE SEQUENCE connections_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.connections_id_seq OWNER TO ion;
-
---
--- Name: connections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: ion
---
-
 ALTER SEQUENCE connections_id_seq OWNED BY connections.id;
-
-
---
--- Name: connections_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
---
-
-SELECT pg_catalog.setval('connections_id_seq', 290, true);
-
-
---
--- Name: duration; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
 
 CREATE TABLE duration (
     id integer NOT NULL,
     duration bigint
 );
 
-
-ALTER TABLE public.duration OWNER TO ion;
-
---
--- Name: history; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
-
 CREATE TABLE history (
     id integer NOT NULL,
     song bigint NOT NULL,
     played timestamp with time zone DEFAULT now()
 );
-
-
-ALTER TABLE public.history OWNER TO ion;
-
---
--- Name: history_id_seq; Type: SEQUENCE; Schema: public; Owner: ion
---
 
 CREATE SEQUENCE history_id_seq
     START WITH 1
@@ -401,68 +234,25 @@ CREATE SEQUENCE history_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.history_id_seq OWNER TO ion;
-
---
--- Name: history_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: ion
---
-
 ALTER SEQUENCE history_id_seq OWNED BY history.id;
 
-
---
--- Name: history_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
---
-
 SELECT pg_catalog.setval('history_id_seq', 1, false);
-
-
---
--- Name: pids; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
 
 CREATE TABLE pids (
     id integer NOT NULL,
     pid integer
 );
 
-
-ALTER TABLE public.pids OWNER TO ion;
-
---
--- Name: playing; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
-
 CREATE TABLE playing (
     id bigint NOT NULL,
     song bigint NOT NULL
 );
-
-
-ALTER TABLE public.playing OWNER TO ion;
-
---
--- Name: queue; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
 
 CREATE TABLE queue (
     id integer NOT NULL,
     recording bigint
 );
 
-create table playlists(
-recording bigint references recordings(id) not null,
-list integer not null,
-which integer not null,
-unique(list,which));
-
-
-ALTER TABLE public.queue OWNER TO ion;
-
---
--- Name: queue_id_seq; Type: SEQUENCE; Schema: public; Owner: ion
---
 
 CREATE SEQUENCE queue_id_seq
     START WITH 1
@@ -471,38 +261,19 @@ CREATE SEQUENCE queue_id_seq
     NO MAXVALUE
     CACHE 1;
 
-
-ALTER TABLE public.queue_id_seq OWNER TO ion;
-
---
--- Name: queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: ion
---
-
 ALTER SEQUENCE queue_id_seq OWNED BY queue.id;
-
-
---
--- Name: queue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: ion
---
-
 SELECT pg_catalog.setval('queue_id_seq', 1, false);
 
-
---
--- Name: ratings; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
+create table playlists(
+recording bigint references recordings(id) not null,
+list integer not null,
+which integer not null,
+unique(list,which));
 
 CREATE TABLE ratings (
     id bigint NOT NULL,
     score double precision DEFAULT 0.0
 );
-
-
-ALTER TABLE public.ratings OWNER TO ion;
-
---
--- Name: recordings; Type: TABLE; Schema: public; Owner: ion; Tablespace:
---
 
 CREATE TABLE recordings (
     id bigint NOT NULL,
@@ -513,7 +284,7 @@ CREATE TABLE recordings (
     plays integer DEFAULT 0,
     played timestamp with time zone,
     hash text,
-    path text
+    path bytea
 );
 
 
