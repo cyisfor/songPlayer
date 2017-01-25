@@ -296,7 +296,7 @@ void playerPlay(void) {
 
   int cols = PQnfields(result);
   fprintf(stderr,"rows %x cols %x\n",rows,cols);
-  PQassert(result,rows>=1 && cols==5);
+  PQassert(result,rows>=1 && cols==4);
 
 	char* end;
 
@@ -311,18 +311,15 @@ void playerPlay(void) {
     lastId = id;
   }
 
-  rows = PQntuples(result);
-  cols = PQnfields(result);
-  PQassert(result,rows==1 && cols==5);
   g_activate_gain.gain = g_ascii_strtod(PQgetvalue(result,0,1),&end);
   g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,2),&end);
   g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,3),&end);
 
-	PGResult* pres = NULL;
+	PGresult* pres = NULL;
 	{
-		const char val[1] = { PQgetvalue(result,0,0) };
-		const char len[1] = { PQgetlength(result,0,0) };
-		const char fmt[1] = { 0 };
+		const char* val[1] = { PQgetvalue(result,0,0) };
+		const int len[1] = { PQgetlength(result,0,0) };
+		const int fmt[1] = { 0 };
 		// path has to be binary, or we have to hex decode it!
 		pres = prepare_exec(pgsucks,
 																	1,val,len,fmt,1);
@@ -418,7 +415,7 @@ int main (int argc, char ** argv)
 	
 	getTopRecording = prepare
 		("SELECT queue.recording,"
-		 "replaygain.gain,replaygain.peak,replaygain.level"
+		 "replaygain.gain,replaygain.peak,replaygain.level "
 		 "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1");
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);

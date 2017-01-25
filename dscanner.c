@@ -19,15 +19,15 @@ bus_call (GstBus     *bus,
           GstMessage *msg,
           gpointer    data)
 {
-    {
-      gint64 len = -1;
-      if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
-        printf("Found duration %ld\n",len);
-        lastDuration = len;
-        gst_element_set_state (panpipe, GST_STATE_NULL);
-        g_main_loop_quit(loop);
-      }
-    }
+	{
+		gint64 len = -1;
+		if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
+			printf("Found duration %ld\n",len);
+			lastDuration = len;
+			gst_element_set_state (panpipe, GST_STATE_NULL);
+			g_main_loop_quit(loop);
+		}
+	}
 
   switch (GST_MESSAGE_TYPE (msg)) {
   case GST_MESSAGE_EOS:
@@ -77,9 +77,9 @@ on_new_pad (GstElement * dec, GstPad * pad, GstElement* sinkElement) {
       GstElement* parentA = gst_pad_get_parent_element(pad);
       GstElement* parentB = gst_pad_get_parent_element(sinkpad);
       g_error ("Failed to link pads! %s - %s : %d",
-	       gst_element_get_name(parentA),
-	       gst_element_get_name(parentB),
-	       ret);
+							 gst_element_get_name(parentA),
+							 gst_element_get_name(parentB),
+							 ret);
       g_object_unref(parentA);
       g_object_unref(parentB);
       exit(3);
@@ -105,16 +105,16 @@ static short nextSong(const char* path) {
 int
 main (int argc, char ** argv)
 {
-    PQinit();
-    preparation nullRecordings = prepare
-			("SELECT id,path FROM recordings WHERE duration IS NULL");
-		preparation deleteRecording = prepare
-			("DELETE FROM recordings WHERE id = $1");
-		preparation setDuration = prepare
-			("UPDATE recordings SET duration = $2 WHERE id = $1");
+	PQinit();
+	preparation nullRecordings = prepare
+		("SELECT id,path FROM recordings WHERE duration = 0 AND NOT lost");
+	preparation lostRecording = prepare
+		("UPDATE recordings SET lost = TRUE WHERE id = $1");
+	preparation setDuration = prepare
+		("UPDATE recordings SET duration = $2 WHERE id = $1");
 
-    PGresult* recordings = prepare_exec(nullRecordings,
-            0,NULL,NULL,NULL,0);
+	PGresult* recordings = prepare_exec(nullRecordings,
+																			0,NULL,NULL,NULL,0);
 
 
   gst_init (&argc, &argv);
@@ -146,27 +146,32 @@ main (int argc, char ** argv)
   gst_element_link(src,decoder);
   g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), alsa);
 
-    int i;
-    for(i=0;i<PQntuples(recordings);++i) {
-        const char* values[2] = { PQgetvalue(recordings,i,0) };
-        int lengths[2] = { PQgetlength(recordings,i,0) };
-        int fmt[] = { 0, 0 };
+	int i;
+	for(i=0;i<PQntuples(recordings);++i) {
+		fputs("recording ",stdout);
+		fputs(PQgetvalue(recordings,i,0),stdout);
+		fputs("...",stdout);
+		const char* values[2] = { PQgetvalue(recordings,i,0) };
+		int lengths[2] = { PQgetlength(recordings,i,0) };
+		int fmt[] = { 0, 0 };
 
-        if(0!=nextSong(PQgetvalue(recordings,i,1))) {
-            PQcheckClear(prepare_exec(deleteRecording,
-                        1,values,lengths,fmt,0));
-        } else {
-            g_main_loop_run(loop);
-            if(lastDuration>0) {
-                char stdurr[0x100];
-                lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
-                values[1] = stdurr;
-                PQcheckClear(prepare_exec(setDuration,
-                        2,values,lengths,fmt,0));
-                lastDuration = -1;
-            }
-        }
-    }
+		if(0!=nextSong(PQgetvalue(recordings,i,1))) {
+			printf("Path not found %s\n",PQgetvalue(recordings,i,1));
+			PQcheckClear(prepare_exec(lostRecording,
+																1,values,lengths,fmt,0));
+		} else {
+			g_main_loop_run(loop);
+			if(lastDuration>0) {
+				char stdurr[0x100];
+				lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
+				values[1] = stdurr;
+				puts(stdurr);
+				PQcheckClear(prepare_exec(setDuration,
+																	2,values,lengths,fmt,0));
+				lastDuration = -1;
+			}
+		}
+	}
 
-    exit(0);
+	exit(0);
 }
