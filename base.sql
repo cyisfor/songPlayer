@@ -319,7 +319,8 @@ CREATE TABLE recordings (
     plays integer not null DEFAULT 0,
     played timestamp with time zone,
     hash bytea unique not null,
-    path bytea not null
+    path bytea not null,
+		lost boolean not null default false
 );
 
 

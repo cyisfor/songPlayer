@@ -302,7 +302,7 @@ static void* queueChecker(void* arg) {
   queuePrepare();
 	numQueued = prepare("SELECT COUNT(id) FROM queue");
 	
-#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE id IN (select recording from queue UNION select id from problems))"
+#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE lost OR id IN (select recording from queue UNION select id from problems))"
 
   bestSongScoreRange = prepare
 		("SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG);

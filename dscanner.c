@@ -107,7 +107,9 @@ main (int argc, char ** argv)
 {
 	PQinit();
 	preparation nullRecordings = prepare
-		("SELECT id,path FROM recordings WHERE duration = 0 AND NOT lost");
+		("SELECT id FROM recordings WHERE duration = 0 AND NOT lost");
+	preparation pgsucks = prepare
+		("SELECT path FROM recordings WHERE id = ?");
 	preparation lostRecording = prepare
 		("UPDATE recordings SET lost = TRUE WHERE id = $1");
 	preparation setDuration = prepare
@@ -115,7 +117,6 @@ main (int argc, char ** argv)
 
 	PGresult* recordings = prepare_exec(nullRecordings,
 																			0,NULL,NULL,NULL,0);
-
 
   gst_init (&argc, &argv);
 
@@ -155,8 +156,12 @@ main (int argc, char ** argv)
 		int lengths[2] = { PQgetlength(recordings,i,0) };
 		int fmt[] = { 0, 0 };
 
-		if(0!=nextSong(PQgetvalue(recordings,i,1))) {
+		PGresult* path = prepare_exec(pgsucks,
+																	1,values, lengths, fmt, 1);
+		
+		if(0!=nextSong(PQgetvalue(path,i,0))) {
 			printf("Path not found %s\n",PQgetvalue(recordings,i,1));
+			exit(23);
 			PQcheckClear(prepare_exec(lostRecording,
 																1,values,lengths,fmt,0));
 		} else {
@@ -171,6 +176,7 @@ main (int argc, char ** argv)
 				lastDuration = -1;
 			}
 		}
+		PQcheckClear(path);
 	}
 
 	exit(0);

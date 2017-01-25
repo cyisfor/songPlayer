@@ -272,7 +272,8 @@ static gboolean on_activate(GstPad* pad, GstObject* parent) {
 }
 
 preparation pgsucks = NULL,
-	getTopRecording = NULL;
+	getTopRecording = NULL,
+	lostRecording = NULL;
 
 /* Note: will restart the current song if called. */
 
@@ -315,17 +316,17 @@ void playerPlay(void) {
   g_activate_gain.peak = g_ascii_strtod(PQgetvalue(result,0,2),&end);
   g_activate_gain.level = g_ascii_strtod(PQgetvalue(result,0,3),&end);
 
-	PGresult* pres = NULL;
-	{
-		const char* val[1] = { PQgetvalue(result,0,0) };
-		const int len[1] = { PQgetlength(result,0,0) };
-		const int fmt[1] = { 0 };
+	const char* val[1] = { PQgetvalue(result,0,0) };
+	const int len[1] = { PQgetlength(result,0,0) };
+	const int fmt[1] = { 0 };
 		// path has to be binary, or we have to hex decode it!
-		pres = prepare_exec(pgsucks,
-																	1,val,len,fmt,1);
-	}
+	PGresult* pres = prepare_exec(pgsucks,
+																1,val,len,fmt,1);
 
-  nextSong(PQgetvalue(pres,0,0));
+  if(0 != nextSong(PQgetvalue(pres,0,0))) {
+		PQcheckClear(prepare_exec(lostRecording,
+																1,val,len,fmt,1));
+	}
 	PQclear(pres);
  CLEAR:
   PQclear(result);
@@ -417,6 +418,10 @@ int main (int argc, char ** argv)
 		("SELECT queue.recording,"
 		 "replaygain.gain,replaygain.peak,replaygain.level "
 		 "FROM queue INNER JOIN replaygain ON replaygain.id = queue.recording  INNER JOIN recordings ON recordings.id = queue.recording ORDER BY queue.id ASC LIMIT 1");
+
+	lostRecording = prepare
+		("UPDATE recordings SET lost = TRUE WHERE id = $1");
+
 
   GMainLoop* loop = g_main_loop_new (NULL, FALSE);
   void done_quit() {
