@@ -50,38 +50,36 @@ gboolean update_properties(gpointer udata) {
 					0,NULL,NULL,NULL,0);
 
   int i = 0;
-  if(PQntuples(result) == 0) {
-	puts("(no reply)");
-  } else {
-	for(;i<PQnfields(result);++i) {
-		const char* value = PQgetvalue(result,0,i);
-		//printf("herp depr %d %d %s %s\n",i,NUM_ROWS,PQfname(result,i),value);
-		if(value == NULL) {
-		  value = "(null)";
-		} else if(i==3) {
-		  static char real_value[0x100];
-		  unsigned long duration = atol(value) / 1000000000;
-		  if(duration > 60) {
-			int seconds = duration % 60;
-			int amt = snprintf(real_value,0x100,"%lum",duration / 60);
-			if(seconds) {
-			  amt += snprintf(real_value+amt,
-							  0x100-amt,
-							  " %us",seconds);
+  if(PQntuples(result) != 0) {
+		for(;i<PQnfields(result);++i) {
+			const char* value = PQgetvalue(result,0,i);
+			//printf("herp depr %d %d %s %s\n",i,NUM_ROWS,PQfname(result,i),value);
+			if(value == NULL) {
+				value = "(null)";
+			} else if(i==3) {
+				static char real_value[0x100];
+				unsigned long duration = atol(value) / 1000000000;
+				if(duration > 60) {
+					int seconds = duration % 60;
+					int amt = snprintf(real_value,0x100,"%lum",duration / 60);
+					if(seconds) {
+						amt += snprintf(real_value+amt,
+														0x100-amt,
+														" %us",seconds);
+					}
+				} else {
+					snprintf(real_value,0x100,"%lus",duration);
+				}
+				value = real_value;
+			} else if(i==0) {
+				static char titlebuf[0x1000];
+				snprintf(titlebuf,0x1000,"%s - Current Song",value);
+				gtk_window_set_title(GTK_WINDOW(top),titlebuf);
+				gtk_label_set_text(title,value);
 			}
-		  } else {
-			snprintf(real_value,0x100,"%lus",duration);
-		  }
-		  value = real_value;
-		} else if(i==0) {
-		  static char titlebuf[0x1000];
-                  snprintf(titlebuf,0x1000,"%s - Current Song",value);
-		  gtk_window_set_title(GTK_WINDOW(top),titlebuf);
-		  gtk_label_set_text(title,value);
-		}
 		
-		gtk_label_set_text(labels[i],value);
-	}
+			gtk_label_set_text(labels[i],value);
+		}
   }
   PQclear(result);
   return G_SOURCE_CONTINUE;
