@@ -30,7 +30,9 @@ preparation insertIntoQueue = NULL;
 preparation byPath = NULL;
 preparation numQueued = NULL;
 preparation _expireProblems = NULL;
+preparation _expireSongProblems = NULL;
 preparation problem = NULL;
+preparation song_problem = NULL;
 
 void* myPQtest = NULL;
 
@@ -156,13 +158,12 @@ static PGresult* pickBestRecording(void) {
 
   rows = PQntuples(result2);
   if(rows==0) {
-      lengths[0] = snprintf(buf,0x100,"%f",song);
-			lengths[1] = sizeof("has no recordings!")-1;
-      const char* values[] = { buf, "has no recordings!" };
-      PQcheckClear(prepare_exec(problem,
-																1,values,lengths,fmt,0));
-  
-      g_error("Song %s has no recordings!\n",song);
+	  lengths[0] = PQgetlength(result,0,0);
+		const char* values[] = { PQgetvalue(result,0,0), "has no recordings!" };
+		PQcheckClear(prepare_exec(song_problem,
+															2,values,lengths,fmt,0));
+		
+		g_error("Song %s has no recordings!\n",song);
   }
   cols = PQnfields(result2);
   PQclear(result);
@@ -280,6 +281,8 @@ static uint8_t getNumQueued(void) {
 static void expireProblems(void) {
     PQclear(prepare_exec(_expireProblems,
                 0,NULL,NULL,NULL,0));
+		PQclear(prepare_exec(_expireSongProblems,
+												 0,NULL,NULL,NULL,0));
 }
 
 void queuePrepare(void) {
@@ -308,7 +311,7 @@ static void* queueChecker(void* arg) {
   queuePrepare();
 	numQueued = prepare("SELECT COUNT(id) FROM queue");
 	
-#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT song FROM recordings WHERE lost OR id IN (select recording from queue UNION select id from problems))"
+#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (SELECT id FROM song_problems UNION SELECT song FROM recordings WHERE lost OR id IN (select recording from queue UNION select id from problems))"
 
   bestSongScoreRange = prepare
 		("SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG);
@@ -331,8 +334,12 @@ static void* queueChecker(void* arg) {
 		("UPDATE recordings SET path = $1 WHERE id = $2");
 	problem = prepare
 		("INSERT INTO problems (id,reason) VALUES ($1,$2)");
+	song_problem = prepare
+		("INSERT INTO song_problems (id,reason) VALUES ($1,$2)");
 	_expireProblems = prepare
 		("DELETE FROM problems WHERE clock_timestamp() - created > '1 hour'");
+	_expireSongProblems = prepare
+		("DELETE FROM song_problems WHERE clock_timestamp() - created > '1 hour'");
 
   setNumQueued(getNumQueued());
 
