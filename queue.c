@@ -26,11 +26,11 @@ preparation scoreByLast = NULL;
 preparation rateByPlayer = NULL;
 preparation updatePath = NULL;
 preparation getPath = NULL;
-preparation blacklist = NULL;
 preparation insertIntoQueue = NULL;
 preparation byPath = NULL;
 preparation numQueued = NULL;
 preparation _expireProblems = NULL;
+preparation problem = NULL;
 
 void* myPQtest = NULL;
 
@@ -156,6 +156,12 @@ static PGresult* pickBestRecording(void) {
 
   rows = PQntuples(result2);
   if(rows==0) {
+      lengths[0] = snprintf(buf,0x100,"%f",song);
+			lengths[1] = sizeof("has no recordings!")-1;
+      const char* values[] = { buf, "has no recordings!" };
+      PQcheckClear(prepare_exec(problem,
+																1,values,lengths,fmt,0));
+  
       g_error("Song %s has no recordings!\n",song);
   }
   cols = PQnfields(result2);
@@ -221,7 +227,7 @@ TRYAGAIN:
 
   g_message("Making sure exists");
   { const char* parameters[] = { PQgetvalue(result,0,0), "path not found" };
-      int len[] = { PQgetlength(result,0,0), sizeof("path not found") };
+      int len[] = { PQgetlength(result,0,0), sizeof("path not found")-1 };
       const int fmt[] = { 1, 0 };
       struct stat buf;
 
@@ -233,7 +239,7 @@ TRYAGAIN:
             g_warning("Song %s:%s doesn't exist",parameters[0],PQgetvalue(exists,0,0));
             if(false==try_to_find(PQgetvalue(exists,0,0),parameters[0],len[0])) {
               PQclear(exists);
-              PQcheckClear(prepare_exec(blacklist,
+              PQcheckClear(prepare_exec(problem,
 										   2,parameters,len,fmt,0));
               PQclear(result);
               return queueHighestRated();
@@ -323,7 +329,7 @@ static void* queueChecker(void* arg) {
 		("SELECT path FROM recordings WHERE id = $1");
 	updatePath = prepare
 		("UPDATE recordings SET path = $1 WHERE id = $2");
-	blacklist = prepare
+	problem = prepare
 		("INSERT INTO problems (id,reason) VALUES ($1,$2)");
 	_expireProblems = prepare
 		("DELETE FROM problems WHERE clock_timestamp() - created > '1 hour'");
