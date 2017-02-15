@@ -1,3 +1,10 @@
+guessdir:=libguess/src/libguess
+guesses:=$(patsubst %.c, %.o, $(wildcard $(guessdir)/*.c)) $(guessdir)/guess.lib.o
+
+derp: libguess/Makefile
+	$(MAKE) -C $(guessdir) $(patsubst $(guessdir)/%,%,$(guesses))
+	$(MAKE) all
+
 white := $(shell echo -ne "\x1b[1m")
 yellow := $(shell echo -ne "\x1b[1;33m")
 reset := $(shell echo -ne "\x1b[0m")
@@ -15,6 +22,7 @@ PROGRAMS:=replay addalbum player import replaygain_scanner scanner dscanner	best
 PROGLOCS:=$(foreach prog,$(PROGRAMS),bin/$(prog))
 
 REBUILD=o/.rebuild
+
 
 all:: $(REBUILD) make/config.mk build
 	$(call status, DONE)
@@ -68,18 +76,18 @@ o/:
 bin/import: o/libguess.a
 bin/import: LDFLAGS:=$(LDFLAGS) o/libguess.a
 
-o/libguess.a: checklg
-	ar crs $@ $(patsubst %.c, %.o, libguess/src/libguess/*.c)
-
-checklg: libguess/Makefile
-	cd libguess && make
+o/libguess.a: $(guesses)
+	ar crs $@ $(guesses)
 
 libguess/Makefile: libguess/configure
 	cd libguess && ./configure
 	touch $@
 
-libguess/configure: libguess/configure.ac
+libguess/configure: libguess/configure.ac | libguess
 	cd libguess && sh autogen.sh
+
+libguess:
+	git submodule update --init
 
 $(REBUILD): | o/
 	touch $@

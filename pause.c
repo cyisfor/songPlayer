@@ -35,6 +35,7 @@ int main(void) {
 	gboolean toggle() {
 		int pid = get_pid("player",sizeof("player")-1);
 		if(pid < 0) {
+			puts("player not found...");
 			g_timeout_add_seconds(10,toggle,NULL);
 			return G_SOURCE_REMOVE;
 		}
@@ -52,6 +53,7 @@ int main(void) {
 			gtk_widget_set_tooltip_text(top, "Play");
 		}
 		printf("%d\n",pid);
+		return G_SOURCE_REMOVE;
 	}
 	
 	gboolean onkey(GtkWidget* top, GdkEventButton* e, gpointer udata) {
