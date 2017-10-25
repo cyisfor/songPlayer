@@ -164,7 +164,7 @@ static PGresult* pickBestRecording(void) {
 															2,values,lengths,fmt,0));
 		PQclear(result);
 		PQclear(result2);
-		g_warn("Song %s has no recordings!\n",song);
+		g_warning("Song %s has no recordings!\n",song);
 		return pickBestRecording();
   }
   cols = PQnfields(result2);
