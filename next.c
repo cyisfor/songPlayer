@@ -24,6 +24,7 @@ $1) FROM mode",
                        1,NULL,values,lengths,fmt,0));
 
   if(atoi(rating)>0) return 0;
+	if(getenv("nonext")) return 0;
 
   int pid = get_pid("player",sizeof("player")-1);
   if(pid > 0)

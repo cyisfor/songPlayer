@@ -162,8 +162,10 @@ static PGresult* pickBestRecording(void) {
 		const char* values[] = { PQgetvalue(result,0,0), "has no recordings!" };
 		PQcheckClear(prepare_exec(song_problem,
 															2,values,lengths,fmt,0));
-		
-		g_error("Song %s has no recordings!\n",song);
+		PQclear(result);
+		PQclear(result2);
+		g_warn("Song %s has no recordings!\n",song);
+		return pickBestRecording();
   }
   cols = PQnfields(result2);
   PQclear(result);
