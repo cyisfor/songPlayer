@@ -216,6 +216,7 @@ static void updateLink(void* udata) {
 }
 
 int main(void) {
+	pq_application_name = "now playing";
   PQinit();
 	getTopSongPath = prepare
 		("SELECT recordings.path, "

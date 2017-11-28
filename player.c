@@ -397,6 +397,7 @@ static void restartPlayer(int signal) {
 
 int main (int argc, char ** argv)
 {
+	pq_application_name = "song player";
   configInit();
   if(!declare_pid("player")) {
 	puts("Player already found");

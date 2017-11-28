@@ -102,7 +102,7 @@ o/current.o: o/current.glade.ch
 
 o/nowplaying.o: o/nowplaying.fields.ch
 
-io/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make 
+o/nowplaying.fields.ch: nowplaying.fields.conf ./bin/nowplaying-make 
 	$(call status, FIELDING, nowplaying)
 	./bin/nowplaying-make <nowplaying.fields.conf >$@.temp
 	mv $@.temp $@

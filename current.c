@@ -108,6 +108,7 @@ activate (GtkApplication* app,
   gtk_application_add_window(app,GTK_WINDOW(top));
 
   activated = true;
+	pq_application_name = "current song";
   PQinit();
 	getTopSong = prepare
 		("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
