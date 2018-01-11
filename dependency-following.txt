@@ -1,0 +1,5 @@
+Okay, first we need a bunch of .o files, so have a pile of .c files that all get compiled to a .o. Dependency track, generate sources, whatever.
+
+Then each .o has a symbol table, so make a mapping of symbol -> .o. When unresolved symbol error, look up the .o for that, and add it as a dependency.
+
+Technically could find dependencies of .os of .os but flattening it should work.
