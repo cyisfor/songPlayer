@@ -38,13 +38,13 @@ make/config.mk: | o/
 	echo -n " "  >> $@.temp
 	xml2-config --cflags | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
-	pkg-config gtk+-3.0 gstreamer-1.0 --cflags >>$@.temp
-	echo -n LDFLAGS+="-lpq -lm " >>$@.temp
+	pkg-config gtk+-3.0 gstreamer-1.0 libpq --cflags >>$@.temp
+	echo -n LDFLAGS+="-lm " >>$@.temp
 	libgcrypt-config --libs | head -c -1 >>$@.temp
 	echo -n " "  >> $@.temp
 	xml2-config --libs | head -c -1 >> $@.temp
 	echo -n " "  >> $@.temp
-	pkg-config gtk+-3.0 gstreamer-1.0 --libs >>$@.temp
+	pkg-config gtk+-3.0 gstreamer-1.0 libpq --libs >>$@.temp
 	TEMP="$@.temp" DEST="$@"	REBUILD="$(REBUILD)" ./make/maybe-reconfig
 
 bin/nowplaying bin/playlist: TARGETLIBS := -luv

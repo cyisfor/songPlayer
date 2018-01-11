@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated with glade 3.20.0 -->
 <interface>
-  <requires lib="gtk+" version="2.24"/>
+  <requires lib="gtk+" version="3.0"/>
   <object class="GtkWindow" id="top">
     <property name="can_focus">False</property>
     <property name="resizable">False</property>
+    <property name="type_hint">dock</property>
     <property name="skip_taskbar_hint">True</property>
     <property name="skip_pager_hint">True</property>
     <property name="focus_on_map">False</property>
-    <property name="decorated">False</property>
     <property name="deletable">False</property>
     <child>
       <object class="GtkImage" id="image">
@@ -18,6 +18,9 @@
         <property name="stock">gtk-stop</property>
         <property name="icon_size">3</property>
       </object>
+    </child>
+    <child>
+      <placeholder/>
     </child>
   </object>
 </interface>
