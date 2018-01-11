@@ -1,12 +1,20 @@
 AM_CFLAGS = -g
 
+noinst_LTLIBRARIES = libpqstuff.la
+libpqstuff_la_SOURCES = pq.c preparation.c
+libpqstuff_la_CFLAGS = $(PQ_CFLAGS)
+libpqstuff_la_LDFLAGS = $(PQ_LIBS)
+
 #bin_PROGRAMS = replay addalbum player import replaygain_scanner scanner dscanner best migrate next graph mode current enqueue enqueuePath testadjust testqueue done ratebytitle ratebyalbum nowplaying nowplaying-make pause playlist
 
 PQ=pq.c preparation.c
 
-bin_PROGRAMS = player replay current next enqueue enqueuePath pause import replaygain_scanner scanner duration_scanner best 
-player_CFLAGS = $(PQ_CFLAGS) $(GSTREAMER_CFLAGS)
-player_LDADD = $(PQ_LIBS) $(GSTREAMER_LIBS) -lm
+#bin_PROGRAMS = player replay current next enqueue enqueuePath pause import replaygain_scanner scanner duration_scanner best 
+bin_PROGRAMS = player
+player_CFLAGS = $(GSTREAMER_CFLAGS)
+player_LDADD = $(GSTREAMER_LIBS) -lm
+player_la_LIBADD = libpqstuff.la
+
 player_SOURCES = player.c $(PQ) select.c synchronize.c signals.c queue.c adjust.c config.c get_pid.c
 
 replay_SOURCES = replay.c $(PQ)

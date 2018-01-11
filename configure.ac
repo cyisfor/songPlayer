@@ -5,6 +5,8 @@ AC_PREREQ([2.69])
 AC_INIT([songpicker], [1.0], [nah])
 AM_INIT_AUTOMAKE(songpicker, 1.0)
 
+LT_INIT
+
 AC_CONFIG_SRCDIR([src/])
 AC_CONFIG_HEADERS([site-config.h])
 
