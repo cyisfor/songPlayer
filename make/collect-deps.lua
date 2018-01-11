@@ -25,7 +25,7 @@ end
 collect(arg[1])
 
 for src,_ in pairs(deps) do
-    local obj = 'o/'..src:sub(1,-2)..'o'
+    local obj = 'o/'..src:sub(5,-2)..'o'
     io.write(obj..' ')
 end
 
@@ -37,7 +37,7 @@ for src in pairs(deps) do
     else
         io.write(' ')
     end
-    local obj = 'o/'..src:sub(1,-2)..'o'
+    local obj = 'o/'..src:sub(5,-2)..'o'
     io.write(obj)
 end
 -- hax

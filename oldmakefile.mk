@@ -1,3 +1,5 @@
+VPATH += src
+
 guessdir:=libguess/src/libguess
 guesses:=$(patsubst %.c, %.o, $(wildcard $(guessdir)/*.c)) $(guessdir)/guess.lib.o
 
@@ -72,6 +74,8 @@ clean:
 o/:
 	$(call status, MKDIR,$@)
 	mkdir $@
+
+o/current.o: o/current.glade.ch
 
 bin/import: o/libguess.a
 bin/import: LDFLAGS:=$(LDFLAGS) o/libguess.a

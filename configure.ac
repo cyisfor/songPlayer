@@ -3,7 +3,9 @@
 
 AC_PREREQ([2.69])
 AC_INIT([songpicker], [1.0], [nah])
-AM_INIT_AUTOMAKE(songpicker, 1.0)
+AM_INIT_AUTOMAKE
+
+AC_USE_SYSTEM_EXTENSIONS
 
 LT_INIT
 
@@ -23,6 +25,7 @@ AC_PROG_LN_S
 PKG_PROG_PKG_CONFIG
 PKG_CHECK_MODULES(PQ, libpq)
 PKG_CHECK_MODULES(GSTREAMER, gstreamer-1.0)
+PKG_CHECK_MODULES(GLIB, glib-2.0)
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h malloc.h stddef.h stdint.h stdlib.h string.h sys/time.h unistd.h])

@@ -1,8 +1,8 @@
-o/%.o: %.c
+o/%.o: src/%.c
 	$(call status,COMPILE, $*)
 	$(CC) $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
-o/%.os: %.c
+o/%.os: src/%.c
 	$(call status,COMPILE_SHARED, $*)
 	$(CC) -fpic $(CFLAGS) -c -o $@ $(filter %.c,$^)
 
@@ -15,12 +15,12 @@ lib/%.so: | lib
 	$(call status,LIBRARY, $*)
 	$(CC) $(CFLAGS) -shared -fPIC -o $@ $(filter %.o %.so, $^) $(LDFLAGS)
 
-deps/%.d: %.c
+deps/%.d: src/%.c
 	$(call status, DEPS, $*)
 	echo -n o/ > $@.temp
-	$(CC) -MM $<  >> $@.temp
+	$(CC) -MG -MM $<  >> $@.temp
 	echo -n "bin/$*: " >> $@.temp
-	luajit make/collect-deps.lua $< >> $@.temp
+	lua make/collect-deps.lua $< >> $@.temp
 	echo $@: make/implicit.mk make/collect-deps.lua >> $@.temp
 	mv $@.temp $@
 
