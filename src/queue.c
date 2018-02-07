@@ -196,7 +196,7 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 
   bool for_format(const char* fmtderp) {
     len[0] = snprintf(buf,0x1000,fmtderp,path);
-		g_warning("trying place %s", fmtderp);
+		//g_warning("trying place %s", fmtderp);
     if(0==stat(buf,&derp)) {
       g_warning("found %s in %s\n",path,buf);
       PQcheckClear(prepare_exec(updatePath, 
@@ -213,7 +213,9 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
   advance("extra/");
   if(for_format("/old/extra/%s") || for_format("/extra/old/%s")) return true;
   advance("user/");
-  return for_format("/home/%s") || for_format("/extra/%s");
+  if(for_format("/home/%s") || for_format("/extra/%s")) return true;
+	g_warning("Can't find %s",path);
+	return false;
 }
 
 static uint8_t queueHighestRated(void) {
