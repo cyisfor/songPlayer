@@ -30,7 +30,7 @@ class Program(str):
 			return
 		thing.added(self)
 		if thing.sources:
-			self.sources.extend(thing.sources)
+			self.sources.extend("src/" + s for s in thing.sources)
 
 class SongDB:
 	sources = None
@@ -53,7 +53,7 @@ class Glade:
 glade = Glade()
 
 class Q(Package):
-	sources = ("src/queue.c",)
+	sources = ("queue.c","adjust.c")
 	def __init__(self):
 		super(Q, self).__init__("GLIB")
 	def added(self,parent):
@@ -78,27 +78,27 @@ Fields = Fields()
 program('addalbum',songdb)
 program('best',songdb,Pkg.MEDIA)
 program('current',songdb,Pkg.GUI,glade)
-program('done',songdb,"adjust.c",queue,"select.c","synchronize.c")
+program('done',songdb,queue,"select.c","synchronize.c")
 program('dscanner',songdb,Pkg.MEDIA)
-program('enqueue',"adjust.c",queue,"synchronize.c")
-program('enqueuePath',,"adjust.c",queue)
+program('enqueue',queue,"synchronize.c")
+program('enqueuePath',queue)
 program('graph',"adjust.c")
 program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT)
 program('migrate',songdb)
-program('mode','adjust.c',queue,'synchronize.c')
+program('mode',queue,'synchronize.c')
 program('next','config.c','get_pid.c',songdb)
 program('nowplaying','nextreactor.c',Fields)
 program('nowplaying-make')
 program('pause',songdb,glade,'get_pid.c','config.c')
-program('player','adjust.c','config.c','get_pid.c',queue,'select.c','signals.c',
+program('player','config.c','get_pid.c',queue,'select.c','signals.c',
 				'synchronize.c',Pkg.MEDIA)
 program('playlist','nextreactor.c',songdb)
 program('ratebyalbum',songdb)
 program('ratebytitle',songdb)
-program('replay','adjust.c',queue,'synchronize.c')
+program('replay',queue,'synchronize.c')
 program('replaygain_scanner',songdb)
 program('testadjust','adjust.c')
-program('testqueue','adjust.c',queue,'select.c','synchronize.c')
+program('testqueue',queue,'select.c','synchronize.c')
 
 for p in sorted(programs):		
 	derpname = p.name.replace("-","_").replace(".","_")
