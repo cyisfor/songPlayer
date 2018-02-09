@@ -26,6 +26,11 @@ testqueue
 
 noinst_LTLIBRARIES = libsongdb.la
 
+# since automake SUCKS you have to do this manually
+# all programs using queue.c must manually add GLIB_CFLAGS/LIBS
+# all programs using libsongdb must manually add DB_CFLAGS
+# all programs using 
+
 libsongdb_la_SOURCES = src/pq.c src/preparation.c
 libsongdb_la_CFLAGS = $(DB_CFLAGS)
 libsongdb_la_LIBADD = $(DB_LIBS)
@@ -64,15 +69,17 @@ dscanner_CFLAGS = $(DB_CFLAGS) $(MEDIA_CFLAGS)
 
 enqueue_SOURCES = src/enqueue.c src/adjust.c src/queue.c src/synchronize.c
 enqueue_LDADD = libsongdb.la $(GLIB_LIBS)
-enqueue_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS)
+enqueue_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS) -pthread
 
 enqueuePath_SOURCES = src/enqueuePath.c src/adjust.c src/queue.c src/synchronize.c
-enqueuePath_LIBS = libsongdb
+enqueuePath_LDADD = libsongdb.la $(GLIB_LIBS)
+enqueuePath_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS) -pthread
 
 graph_SOURCES = src/graph.c src/adjust.c
 
 import_SOURCES = src/import.c src/derpstring.c src/hash.c
 import_LIBS = libsongdb
+import_CFLAGS = $(DB_CFLAGS)
 
 migrate_SOURCES = src/migrate.c
 migrate_LIBS = libsongdb
@@ -111,5 +118,5 @@ testadjust_SOURCES = src/testadjust.c src/adjust.c
 testqueue_SOURCES = src/testqueue.c src/adjust.c src/queue.c src/select.c src/synchronize.c
 testqueue_LIBS = libsongdb
 
-import_SOURCES += libguess/src/guess.c libguess/src/guess_impl.c libguess/src/guess_tab.c libguess/src/dfa.c
+import_SOURCES += libguess/src/libguess/guess.c libguess/src/libguess/guess_impl.c libguess/src/libguess/guess_tab.c libguess/src/libguess/dfa.c
 
