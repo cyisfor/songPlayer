@@ -38,12 +38,11 @@ best_SOURCES = src/best.c
 best_LDADD = libsongdb.la $(MEDIA_LIBS)
 best_CFLAGS = $(DB_CFLAGS) $(MEDIA_CFLAGS)
 
-current_SOURCES = src/current.c
-current_LIBS = libsongdb.la
-current_CFLAGS = $(DB_CFLAGS)
+current_SOURCES = src/current.c current.glade.ch
+current_LDADD = libsongdb.la $(GUI_LIBS)
+current_CFLAGS = $(DB_CFLAGS) $(GUI_CFLAGS)
 
-src/current.o: current.glade.ch
-current.glade.ch: current.glade.xml
+BUILT_SOURCES = current.glade.ch
 
 %.ch: %.xml ./data_to_header_string/pack
 	name=gladeFile ./data_to_header_string/pack <$< >$@.temp
@@ -56,13 +55,16 @@ current.glade.ch: current.glade.xml
 	git clone ~/code/data_to_header_string/ 
 
 done_SOURCES = src/done.c src/adjust.c src/queue.c src/select.c src/synchronize.c
-done_LIBS = libsongdb
+done_LDADD = libsongdb.la $(GLIB_LIBS)
+done_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS) -pthread
 
 dscanner_SOURCES = src/dscanner.c
-dscanner_LIBS = libsongdb
+dscanner_LDADD = libsongdb.la $(MEDIA_LIBS)
+dscanner_CFLAGS = $(DB_CFLAGS) $(MEDIA_CFLAGS)
 
 enqueue_SOURCES = src/enqueue.c src/adjust.c src/queue.c src/synchronize.c
-enqueue_LIBS = libsongdb
+enqueue_LDADD = libsongdb.la $(GLIB_LIBS)
+enqueue_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS)
 
 enqueuePath_SOURCES = src/enqueuePath.c src/adjust.c src/queue.c src/synchronize.c
 enqueuePath_LIBS = libsongdb
