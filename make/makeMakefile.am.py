@@ -74,6 +74,7 @@ def program(name,*args):
 	print("")
 
 class Fields:
+	sources = None
 	def added(self,parent):
 		parent.sources.append(parent.name + ".fields.ch")
 Fields = Fields()
@@ -92,4 +93,13 @@ program('mode','adjust.c',queue,'synchronize.c',songdb)
 program('next','config.c','get_pid.c',songdb)
 program('nowplaying','nextreactor.c',Fields)
 program('nowplaying-make')
-program('pause',glade,'get_pid.c','config.c')
+program('pause',songdb,glade,'get_pid.c','config.c')
+program('player','adjust.c','config.c','get_pid.c',queue,'select.c','signals.c',
+				'synchronize.c',songdb,Pkg.MEDIA)
+program('playlist','nextreactor.c',songdb)
+program('ratebyalbum',songdb)
+program('ratebytitle',songdb)
+program('replay','adjust.c',queue,'synchronize.c',songdb)
+program('replaygain_scanner',songdb)
+program('testadjust','adjust.c')
+program('testqueue','adjust.c',queue,'select.c','synchronize.c',songdb)
