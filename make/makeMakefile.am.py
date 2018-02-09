@@ -64,7 +64,6 @@ glade = Glade()
 
 class Q:
 	sources = ("queue.c","adjust.c")
-	def __init__(self):
 	def added(self,parent):
 		Pkg.GLIB.added(parent)
 		songdb.added(parent)
@@ -112,7 +111,7 @@ program('player','config.c','get_pid.c',queue,'select.c','signals.c',
 				'synchronize.c',Pkg.MEDIA)
 program('playlist','nextreactor.c',songdb,Pkg.GLIB)
 program('ratebyalbum',songdb)
-program('ratebytitle',songdb)
+program('ratebytitle',songdb,Glade)
 program('replay',queue,'synchronize.c')
 program('replaygain_scanner',songdb)
 program('testadjust','adjust.c',noinst=True)
