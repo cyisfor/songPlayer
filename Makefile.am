@@ -28,7 +28,7 @@ testqueue
 
 noinst_LTLIBRARIES = libsongdb.la
 
-lib_songdb_la_SOURCES = pq.c preparation.c
+libsongdb_la_SOURCES = pq.c preparation.c
 
 addalbum_SOURCES = addalbum.c
 addalbum_LIBS = libsongdb
