@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h> // atexit
 #include <sys/stat.h> // mkdir
-#include <fcntl.h> // open
+#include <fcntl.h> // open, fcntl F_SETLK
 #include <errno.h> // errno
 
 #include <stdio.h> // snscanf
@@ -43,9 +43,13 @@ bool declare_pid(const char* application_name) {
 	mkdir(loc,0700);
 	chdir(loc);
 	int out = open(application_name,O_WRONLY|O_CREAT|O_TRUNC,0600);
-	if(0 != lockf(out, F_TLOCK, 0)) {
+	struct flock info = {
+		.l_type = F_WRLCK,
+	};
+	if(0 != fcntl(out, F_SETLK, &info)) {
 		if(errno == EACCES || errno == EAGAIN) {
 			close(out);
+			printf("PID is %d\n",info.l_pid);
 			return false;
 		}
 
