@@ -118,8 +118,13 @@ testadjust_SOURCES = src/testadjust.c src/adjust.c
 testqueue_SOURCES = src/testqueue.c src/adjust.c src/queue.c src/select.c src/synchronize.c
 testqueue_LIBS = libsongdb
 
-import_SOURCES += libguess/src/libguess/guess_impl.c \
-libguess/src/libguess/guess_tab.c \
-libguess/src/libguess/dfa.c \
-libguess/src/libguess/guess.c
+import_LDADD += libguess/libguess.la
 
+libguess/libguess.la: libguess/buildsys.mk
+	$(MAKE) -C $(dir $@) $@
+
+libguess/buildsys.mk: libguess/configure
+	cd $(dir $@) && ./configure --disable-shared
+
+libguess/configure: libguess/configure.ac
+	cd $(dir $@) && ./autogen.sh
