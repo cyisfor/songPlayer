@@ -61,7 +61,7 @@ bool declare_pid(const char* application_name) {
 		perror("Bad lock");
 		exit(23);
 	}
-	error(23,errno,"oops %d\n",info.l_pid);
+	error(0,errno,"oops %d\n",info.l_pid);
 	atexit(get_pid_done);
 	char buf[0x100];
 	ssize_t amt = snprintf(buf,0x100,"%d",getpid());
