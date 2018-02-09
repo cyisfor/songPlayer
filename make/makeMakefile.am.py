@@ -14,7 +14,7 @@ class pthread:
 		parent.addCflags("-pthread")
 pthread = pthread()
 
-class Program:
+class Program(str):
 	def __init__(self,name):
 		self.name = name
 		self.sources = []
@@ -61,17 +61,12 @@ class Q(Package):
 		parent.addCflags("-pthread")
 queue = Q()
 
+programs = []
 def program(name,*args):
 	p = Program(name)
 	for arg in args:
 		p.add(arg)
-	derpname = p.name.replace("-","_").replace(".","_")
-	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
-	if p.cflags:
-		print(derpname+"_CFLAGS =",*p.cflags)
-	if p.ldflags:
-		print(derpname+"_LDADD =",*p.ldflags)
-	print("")
+	programs.append(p)
 
 class Fields:
 	sources = None
@@ -103,3 +98,12 @@ program('replay','adjust.c',queue,'synchronize.c',songdb)
 program('replaygain_scanner',songdb)
 program('testadjust','adjust.c')
 program('testqueue','adjust.c',queue,'select.c','synchronize.c',songdb)
+
+for p in sorted(programs):		
+	derpname = p.name.replace("-","_").replace(".","_")
+	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
+	if p.cflags:
+		print(derpname+"_CFLAGS =",*p.cflags)
+	if p.ldflags:
+		print(derpname+"_LDADD =",*p.ldflags)
+	print("")
