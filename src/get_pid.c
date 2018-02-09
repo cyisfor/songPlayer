@@ -50,9 +50,7 @@ bool declare_pid(const char* application_name) {
 	if(0 != fcntl(out, F_SETLK, &info)) {
 		if(errno == EACCES || errno == EAGAIN) {
 			close(out);
-			printf("PID is %d\n",info.l_pid);
-			fcntl(out,F_GETLK,&info);
-			printf("PID is %d\n",info.l_pid);
+			error(0,errno,"PID is %d\n",info.l_pid);
 			return false;
 		}
 
