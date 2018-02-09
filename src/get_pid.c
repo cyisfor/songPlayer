@@ -48,25 +48,25 @@ bool declare_pid(const char* application_name) {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET
 	};
-	for(;;) {
-		if(0 != fcntl(out, F_GETLK, &info)) {
-			perror("Bad lock");
-			exit(23);
-		}
-		// aren't race conditions wonderful?
-		error(0,errno,"no lock? %d\n",info.l_pid);
-		info.l_type = F_WRLCK;
-		if(0 == fcntl(out, F_SETLK, &info)) {
-			break;
-		}
-		if(errno == EACCES || errno == EAGAIN) {
-			close(out);
-			error(0,0,"PID is %d\n",info.l_pid);
-			return false;
-		}
-		
-		error(0,errno,"no set lock? %d\n",info.l_pid);
+
+	if(0 != fcntl(out, F_GETLK, &info)) {
+		perror("Bad lock");
+		exit(23);
 	}
+	// aren't race conditions wonderful?
+	error(0,errno,"no lock? %d\n",info.l_pid);
+	info.l_type = F_WRLCK;
+	if(0 == fcntl(out, F_SETLK, &info)) {
+		return true;
+	}
+	if(errno == EACCES || errno == EAGAIN) {
+		close(out);
+		error(0,0,"PID is %d\n",info.l_pid);
+		return false;
+	}
+	perror("Bad lock");
+	abort();
+	
 	atexit(get_pid_done);
 	char buf[0x100];
 	ssize_t amt = snprintf(buf,0x100,"%d",getpid());
