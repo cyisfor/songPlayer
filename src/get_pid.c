@@ -43,7 +43,7 @@ bool declare_pid(const char* application_name) {
 	mkdir(loc,0700);
 	chdir(loc);
 	int out = open(application_name,O_RDWR|O_CREAT,0600);
-	assert(out >= 0);
+b	assert(out >= 0);
 	struct flock info = {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET
@@ -63,6 +63,7 @@ bool declare_pid(const char* application_name) {
 			exit(23);
 		}
 		error(0,errno,"no lock? %d\n",info.l_pid);
+		info.l_type = F_WRLCK;
 		if(0 == fcntl(out, F_SETLK, &info)) {
 			break;
 		}
