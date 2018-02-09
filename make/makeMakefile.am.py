@@ -85,6 +85,12 @@ class Fields:
 		parent.sources.append(source)
 Fields = Fields()
 
+class LibG:
+	sources = None
+	def added(self,parent):
+		parent.addLDflags("libguess/src/libguess/libguess.so")
+LibG = LibG()
+
 program('addalbum',songdb)
 program('best',songdb,Pkg.MEDIA)
 program('current',songdb,Pkg.GUI,glade)
@@ -93,7 +99,7 @@ program('dscanner',songdb,Pkg.MEDIA)
 program('enqueue',queue,"synchronize.c")
 program('enqueuePath',queue)
 program('graph',"adjust.c")
-program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT)
+program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT,LibG)
 program('migrate',songdb)
 program('mode',queue,'synchronize.c')
 program('next','config.c','get_pid.c',songdb)
@@ -121,7 +127,7 @@ for p in programs:
 print("\n")
 
 if noinst:
-	print("noinst_PROGRAMS =",end='');
+	print("noinst_PROGRAMS =",end='')
 	for p in sorted(noinst):
 		print("\\\n ",p.name,end='')
 	print("\n")
@@ -129,7 +135,7 @@ if noinst:
 if built_sources:
 	print("BUILT_SOURCES =",end='')
 	for source in sorted(built_sources):
-		print(" \\\n ",source)
+		print(" \\\n ",source,end='')
 	print("\n")
 	
 for p in sorted(programs):
