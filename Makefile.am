@@ -1,7 +1,5 @@
 ACLOCAL_AMFLAGS = -Im4
 
-vpath %.c src
-
 bin_PROGRAMS = \
 addalbum \
 best \
@@ -28,7 +26,9 @@ testqueue
 
 noinst_LTLIBRARIES = libsongdb.la
 
-libsongdb_la_SOURCES = pq.c preparation.c
+libsongdb_la_SOURCES = src/pq.c src/preparation.c
+libsongdb_la_CFLAGS = $(DB_CFLAGS)
+libsongdb_la_LIBADD = $(DB_LIBS)
 
 addalbum_SOURCES = addalbum.c
 addalbum_LIBS = libsongdb
@@ -56,12 +56,14 @@ graph_SOURCES = graph.c adjust.c
 import_SOURCES = import.c derpstring.c hash.c
 import_LIBS = libsongdb
 
-migrate_SOURCES = migrate.c pq.c
+migrate_SOURCES = migrate.c
+migrate_LIBS = libsongdb
 
 mode_SOURCES = mode.c adjust.c queue.c synchronize.c
 mode_LIBS = libsongdb
 
-next_SOURCES = next.c config.c get_pid.c pq.c
+next_SOURCES = next.c config.c get_pid.c
+next_LIBS = libsongdb
 
 nowplaying_SOURCES = nowplaying.c nextreactor.c
 nowplaying_LIBS = libsongdb $(UV_LIBS)
@@ -74,7 +76,8 @@ player_LIBS = libsongdb
 playlist_SOURCES = playlist.c nextreactor.c
 playlist_LIBS = libsongdb
 
-ratebyalbum_SOURCES = ratebyalbum.c pq.c
+ratebyalbum_SOURCES = ratebyalbum.c
+ratebyalbum_LIBS = libsongdb
 
 ratebytitle_SOURCES = ratebytitle.c 
 ratebytitle_LIBS = libsongdb
