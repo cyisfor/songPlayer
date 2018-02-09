@@ -37,7 +37,7 @@ int main(void) {
 	if(stop == NULL) {
 		g_error("um stop");
 	}
-	GIcon* play = g_icon_new_for_string("gtk-media-play",&err);
+	GIcon* play = g_icon_new_for_string("gtk-media-pulay",&err);
 	if(play == NULL) {
 		g_error("um play");
 	}
