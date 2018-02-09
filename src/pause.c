@@ -32,7 +32,7 @@ int main(void) {
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
 
 	bool stopped = false;
-	GError err = NULL;
+	GError* err = NULL;
 	GIcon* stop = g_icon_new_for_string("gtk-stop",&err);
 	if(stop == NULL) {
 		g_error("um stop");
