@@ -33,11 +33,11 @@ int main(void) {
 
 	bool stopped = false;
 	GError* err = NULL;
-	GIcon* stop = g_icon_new_for_string("gtk-stop",&err);
+	GIcon* stop = g_icon_new_for_string("process-stop",&err);
 	if(stop == NULL) {
 		g_error("um stop");
 	}
-	GIcon* play = g_icon_new_for_string("gtk-media-play",&err);
+	GIcon* play = g_icon_new_for_string("media-playback-start",&err);
 	if(play == NULL) {
 		g_error("um play");
 	}
