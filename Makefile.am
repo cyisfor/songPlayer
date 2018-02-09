@@ -78,8 +78,8 @@ enqueuePath_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS) -pthread
 graph_SOURCES = src/graph.c src/adjust.c
 
 import_SOURCES = src/import.c src/derpstring.c src/hash.c
-import_LIBS = libsongdb
-import_CFLAGS = $(DB_CFLAGS)
+import_LDADD = libsongdb.la $(LIBGCRYPT_LIBS)
+import_CFLAGS = $(DB_CFLAGS) $(LIBGCRYPT_CFLAGS)
 
 migrate_SOURCES = src/migrate.c
 migrate_LIBS = libsongdb
@@ -118,5 +118,8 @@ testadjust_SOURCES = src/testadjust.c src/adjust.c
 testqueue_SOURCES = src/testqueue.c src/adjust.c src/queue.c src/select.c src/synchronize.c
 testqueue_LIBS = libsongdb
 
-import_SOURCES += libguess/src/libguess/guess.c libguess/src/libguess/guess_impl.c libguess/src/libguess/guess_tab.c libguess/src/libguess/dfa.c
+import_SOURCES += libguess/src/libguess/guess_impl.c \
+libguess/src/libguess/guess_tab.c \
+libguess/src/libguess/dfa.c \
+libguess/src/libguess/guess.c
 
