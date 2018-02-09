@@ -24,7 +24,9 @@ replaygain_scanner \
 testadjust \
 testqueue
 
-noinst_LTLIBRARIES = libsongdb.la
+noinst_PROGRAMS = nowplaying-make
+
+lib_LTLIBRARIES = libsongdb.la
 
 # since automake SUCKS you have to do this manually
 # all programs using queue.c must manually add GLIB_CFLAGS/LIBS
@@ -97,7 +99,15 @@ nowplaying_SOURCES = src/nowplaying.c src/nextreactor.c nowplaying.fields.ch
 nowplaying_LDADD = libsongdb.la $(UV_LIBS)
 nowplaying_CFLAGS = $(DB_CFLAGS) $(UV_CFLAGS)
 
+nowplaying.fields.ch: nowplaying.fields.conf nowplaying-make
+	./nowplaying-make <$< >$@.temp
+	mv $@.temp $@
+
+nowplaying_make_SOURCES = src/nowplaying-make.c
+
 pause_SOURCES = src/pause.c src/config.c src/get_pid.c
+pause_LDADD = libsongdb.la
+pause_CFLAGS = $(DB_CFLAGS) 
 
 player_SOURCES = src/player.c src/adjust.c src/config.c src/get_pid.c src/queue.c src/select.c src/signals.c src/synchronize.c
 player_LIBS = libsongdb
