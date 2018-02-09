@@ -1,6 +1,6 @@
 #include "pq.h"
 #include "preparation.h"
-#include "o/ratebytitle.glade.ch"
+#include "ratebytitle.glade.ch"
 
 #include <gtk/gtk.h>
 #include <glib.h>

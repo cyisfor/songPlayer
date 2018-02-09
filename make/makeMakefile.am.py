@@ -111,7 +111,7 @@ program('player','config.c','get_pid.c',queue,'select.c','signals.c',
 				'synchronize.c',Pkg.MEDIA)
 program('playlist','nextreactor.c',songdb,Pkg.GLIB)
 program('ratebyalbum',songdb)
-program('ratebytitle',songdb,Glade)
+program('ratebytitle',songdb,glade)
 program('replay',queue,'synchronize.c')
 program('replaygain_scanner',songdb)
 program('testadjust','adjust.c',noinst=True)
