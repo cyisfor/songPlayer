@@ -46,6 +46,7 @@ bool declare_pid(const char* application_name) {
 	assert(out >= 0);
 	struct flock info = {
 		.l_type = F_WRLCK,
+		.l_whence = SEEK_SET
 	};
 	if(0 != fcntl(out, F_SETLK, &info)) {
 		if(errno == EACCES || errno == EAGAIN) {
