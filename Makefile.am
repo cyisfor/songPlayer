@@ -82,13 +82,16 @@ import_LDADD = libsongdb.la $(LIBGCRYPT_LIBS)
 import_CFLAGS = $(DB_CFLAGS) $(LIBGCRYPT_CFLAGS)
 
 migrate_SOURCES = src/migrate.c
-migrate_LIBS = libsongdb
+migrate_LDADD = libsongdb.la
+migrate_CFLAGS = $(DB_CFLAGS) 
 
 mode_SOURCES = src/mode.c src/adjust.c src/queue.c src/synchronize.c
-mode_LIBS = libsongdb
+mode_LDADD = libsongdb.la $(GLIB_LIBS)
+mode_CFLAGS = $(DB_CFLAGS) $(GLIB_CFLAGS) -pthread
 
 next_SOURCES = src/next.c src/config.c src/get_pid.c
-next_LIBS = libsongdb
+next_LDADD = libsongdb.la
+next_CFLAGS = $(DB_CFLAGS) 
 
 nowplaying_SOURCES = src/nowplaying.c src/nextreactor.c
 nowplaying_LIBS = libsongdb $(UV_LIBS)
@@ -118,10 +121,10 @@ testadjust_SOURCES = src/testadjust.c src/adjust.c
 testqueue_SOURCES = src/testqueue.c src/adjust.c src/queue.c src/select.c src/synchronize.c
 testqueue_LIBS = libsongdb
 
-import_LDADD += libguess/libguess.la
+import_LDADD += libguess/src/libguess/libguess.so
 
-libguess/libguess.la: libguess/buildsys.mk
-	$(MAKE) -C $(dir $@) $@
+libguess/src/libguess/libguess.so: libguess/buildsys.mk
+	$(MAKE) -C $(dir $@) $(notdir $@)
 
 libguess/buildsys.mk: libguess/configure
 	cd $(dir $@) && ./configure --disable-shared
