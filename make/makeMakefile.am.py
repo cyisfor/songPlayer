@@ -15,7 +15,8 @@ class pthread:
 pthread = pthread()
 
 class Program(str):
-	def __init__(self,name):
+	def __init__(self,name,noinst=False):
+		self.noinst = noinst
 		self.name = name
 		self.sources = []
 		self.cflags = []
@@ -63,8 +64,8 @@ class Q(Package):
 queue = Q()
 
 programs = []
-def program(name,*args):
-	p = Program(name)
+def program(name,*args,noinst=False):
+	p = Program(name,noinst=noinst)
 	for arg in args:
 		p.add(arg)
 	programs.append(p)
@@ -88,7 +89,7 @@ program('migrate',songdb)
 program('mode',queue,'synchronize.c')
 program('next','config.c','get_pid.c',songdb)
 program('nowplaying','nextreactor.c',Fields)
-program('nowplaying-make')
+program('nowplaying-make',noinst=True)
 program('pause',songdb,glade,'get_pid.c','config.c')
 program('player','config.c','get_pid.c',queue,'select.c','signals.c',
 				'synchronize.c',Pkg.MEDIA)
@@ -97,10 +98,16 @@ program('ratebyalbum',songdb)
 program('ratebytitle',songdb)
 program('replay',queue,'synchronize.c')
 program('replaygain_scanner',songdb)
-program('testadjust','adjust.c')
-program('testqueue',queue,'select.c','synchronize.c')
+program('testadjust','adjust.c',noinst=True)
+program('testqueue',queue,'select.c','synchronize.c',noinst=True)
 
-for p in sorted(programs):		
+programs = sorted(programs)
+print("bin_PROGRAMS =",*(p for p in programs if not p.noinst))
+noinst = [p for p in programs if not p.noinst]
+if noinst:
+	print("noinst_PROGRAMS =",*(sorted(noinst)))
+	
+for p in sorted(programs):
 	derpname = p.name.replace("-","_").replace(".","_")
 	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
 	if p.cflags:
