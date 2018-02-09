@@ -12,7 +12,8 @@ class pthread:
 	sources = None
 	def added(self,parent):
 		parent.addCflags("-pthread")
-		
+pthread = pthread()
+
 class Program:
 	def __init__(self,name):
 		self.name = name
@@ -25,7 +26,7 @@ class Program:
 		self.ldflags.append(flags)
 	def add(self,thing):
 		if isinstance(thing,str):
-			self.sources.append(thing)
+			self.sources.append("src/"+thing)
 			return
 		thing.added(self)
 		if thing.sources:
@@ -50,7 +51,7 @@ class Glade:
 glade = Glade()
 
 class Q(Package):
-	sources = ("queue.c",)
+	sources = ("src/queue.c",)
 	def __init__(self):
 		super(Q, self).__init__("GLIB")
 queue = Q()
@@ -59,7 +60,7 @@ def program(name,*args):
 	p = Program(name)
 	for arg in args:
 		p.add(arg)
-	print(p.name+"_SOURCES =",*p.sources)
+	print(p.name+"_SOURCES =","src/"+p.name+".c",*p.sources)
 	if p.cflags:
 		print(p.name+"_CFLAGS =",*p.cflags)
 	if p.ldflags:
@@ -72,3 +73,4 @@ program('current',songdb,Pkg.GUI,glade)
 program('done',songdb,"adjust.c",queue,"select.c","synchronize.c")
 program('dscanner',songdb,Pkg.MEDIA)
 program('enqueue',songdb,queue)
+program('enqueuePath',songdb,"adjust.c",queue,pthread)
