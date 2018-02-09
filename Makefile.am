@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -Im4
+
 vpath %.c src
 
 bin_PROGRAMS = \
