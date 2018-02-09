@@ -50,7 +50,7 @@ class Pkg:
 	sources = None
 	MEDIA = Package("MEDIA")
 	GUI = Package("GUI")
-	GCRYPT = Package("GCRYPT")
+	GCRYPT = Package("LIBGCRYPT")
 	GLIB = Package("GLIB")
 	
 class Glade:
