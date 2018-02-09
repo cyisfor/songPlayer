@@ -105,18 +105,21 @@ program('testadjust','adjust.c',noinst=True)
 program('testqueue',queue,'select.c','synchronize.c',noinst=True)
 
 programs = sorted(programs)
+noinst = []
 print("bin_PROGRAMS = ",end='')
-for p in programs if not p.noinst:
-	print("\\\n ",p.name,end='')
-print('')
+for p in programs:
+	if p.noinst:
+		noinst.append(p)
+	else:
+		print(" \\\n ",p.name,end='')
+print("\n")
 
-noinst = [p for p in programs if not p.noinst]
 if noinst:
 	print("noinst_PROGRAMS =",end='');
 	for p in sorted(noinst):
 		print("\\\n ",p.name,end='')
-	print('')
-	
+
+	print("\n")
 for p in sorted(programs):
 	derpname = p.name.replace("-","_").replace(".","_")
 	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
