@@ -52,13 +52,13 @@ int main(void) {
 			fputs("starting player ",stdout);
 			kill(pid,SIGCONT);
 			stopped = false;
-			gtk_image_set_from_gicon(image, play, GTK_ICON_SIZE_LARGE_TOOLBAR);
+			gtk_image_set_from_gicon(image, stop, GTK_ICON_SIZE_LARGE_TOOLBAR);
 			gtk_widget_set_tooltip_text(top, "Pause");
 		} else {
 			fputs("stopping player ",stdout);
 			kill(pid, SIGSTOP);
 			stopped = true;
-			gtk_image_set_from_gicon(image, stop, GTK_ICON_SIZE_LARGE_TOOLBAR);
+			gtk_image_set_from_gicon(image, play, GTK_ICON_SIZE_LARGE_TOOLBAR);
 			gtk_widget_set_tooltip_text(top, "Play");
 		}
 		printf("%d\n",pid);
