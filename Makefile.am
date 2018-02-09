@@ -22,7 +22,7 @@ ratebytitle \
 replay \
 replaygain_scanner \
 testadjust \
-testqueue \
+testqueue
 
 addalbum_SOURCES = src/pq.c src/preparation.c
 best_SOURCES = src/pq.c src/preparation.c
