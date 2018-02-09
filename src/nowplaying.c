@@ -221,7 +221,7 @@ int main(void) {
 	getTopSongPath = prepare
 		("SELECT recordings.path, "
 	  "songs.title, "
-#include "o/nowplaying.fields.ch"
+#include "nowplaying.fields.ch"
       "FROM queue "
       "INNER JOIN recordings ON recordings.id = queue.recording "
       "INNER JOIN songs ON recordings.song = songs.id "

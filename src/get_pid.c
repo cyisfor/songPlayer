@@ -43,7 +43,7 @@ bool declare_pid(const char* application_name) {
 	mkdir(loc,0700);
 	chdir(loc);
 	int out = open(application_name,O_RDWR|O_CREAT,0600);
-b	assert(out >= 0);
+	assert(out >= 0);
 	struct flock info = {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET

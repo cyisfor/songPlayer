@@ -47,7 +47,7 @@ current_SOURCES = src/current.c current.glade.ch
 current_LDADD = libsongdb.la $(GUI_LIBS)
 current_CFLAGS = $(DB_CFLAGS) $(GUI_CFLAGS)
 
-BUILT_SOURCES = current.glade.ch
+BUILT_SOURCES = current.glade.ch nowplaying.fields.ch
 
 %.ch: %.xml ./data_to_header_string/pack
 	name=gladeFile ./data_to_header_string/pack <$< >$@.temp
@@ -93,8 +93,9 @@ next_SOURCES = src/next.c src/config.c src/get_pid.c
 next_LDADD = libsongdb.la
 next_CFLAGS = $(DB_CFLAGS) 
 
-nowplaying_SOURCES = src/nowplaying.c src/nextreactor.c
-nowplaying_LIBS = libsongdb $(UV_LIBS)
+nowplaying_SOURCES = src/nowplaying.c src/nextreactor.c nowplaying.fields.ch
+nowplaying_LDADD = libsongdb.la $(UV_LIBS)
+nowplaying_CFLAGS = $(DB_CFLAGS) $(UV_CFLAGS)
 
 pause_SOURCES = src/pause.c src/config.c src/get_pid.c
 
