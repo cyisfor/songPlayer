@@ -1,5 +1,7 @@
 # sigh
 
+built_sources = []
+
 class Package:
 	sources = None
 	def __init__(self, name):
@@ -52,7 +54,9 @@ class Glade:
 	sources = None
 	def added(self,parent):
 		Pkg.GUI.added(parent)
-		parent.sources.append(parent.name + ".glade.ch")
+		source = parent.name + ".glade.ch"
+		built_sources.append(source)
+		parent.sources.append(source)
 glade = Glade()
 
 class Q(Package):
@@ -76,7 +80,9 @@ def program(name,*args,noinst=False):
 class Fields:
 	sources = None
 	def added(self,parent):
-		parent.sources.append(parent.name + ".fields.ch")
+		source = parent.name + ".fields.ch"
+		built_sources.append(source)
+		parent.sources.append(source)
 Fields = Fields()
 
 program('addalbum',songdb)
@@ -118,8 +124,14 @@ if noinst:
 	print("noinst_PROGRAMS =",end='');
 	for p in sorted(noinst):
 		print("\\\n ",p.name,end='')
-
 	print("\n")
+
+if built_sources:
+	print("BUILT_SOURCES =",end='')
+	for source in sorted(built_sources):
+		print(" \\\n ",source)
+	print("\n")
+	
 for p in sorted(programs):
 	derpname = p.name.replace("-","_").replace(".","_")
 	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
