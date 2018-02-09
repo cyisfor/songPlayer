@@ -23,13 +23,19 @@ int get_pid(const char* application_name, ssize_t len) {
 	const char* loc = get_pidloc();
 	mkdir(loc,0700);
 	assert(0==chdir(loc));
-	int inp = open(application_name,O_RDONLY);
-	if(inp < 0) return inp;
-	char buf[0x100];
-	int amt = read(inp,buf,0x100);
-	buf[amt] = '\0';
-	assert(amt>0);
-	return atoi(buf);
+	int lock = open(application_name,O_WRONLY,0600);
+	if(lock < 0) return -1;
+	struct flock info = {
+		.l_type = F_WRLCK,
+		.l_whence = SEEK_SET
+	};
+
+	if(0 != fcntl(lock, F_GETLK, &info)) {
+		perror("Bad lock");
+		abort();
+	}
+	close(lock);
+	return info.l_pid;
 }
 
 static void get_pid_done(void) {
@@ -42,22 +48,22 @@ bool declare_pid(const char* application_name) {
 	const char* loc = get_pidloc();
 	mkdir(loc,0700);
 	chdir(loc);
-	int out = open(application_name,O_RDWR|O_CREAT,0600);
-	assert(out >= 0);
+	int lock = open(application_name,O_WRONLY|O_CREAT,0600);
+	assert(lock >= 0);
 	struct flock info = {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET
 	};
 
-	if(0 != fcntl(out, F_GETLK, &info)) {
+	if(0 != fcntl(lock, F_GETLK, &info)) {
 		perror("Bad lock");
 		exit(23);
 	}
 	// aren't race conditions wonderful?
 	info.l_type = F_WRLCK;
-	if(0 != fcntl(out, F_SETLK, &info)) {
+	if(0 != fcntl(lock, F_SETLK, &info)) {
 		if(errno == EACCES || errno == EAGAIN) {
-			close(out);
+			close(lock);
 			printf("PID is %d\n",info.l_pid);
 			return false;
 		}
@@ -68,7 +74,7 @@ bool declare_pid(const char* application_name) {
 	atexit(get_pid_done);
 	char buf[0x100];
 	ssize_t amt = snprintf(buf,0x100,"%d",getpid());
-	write(out,buf,amt);
-	fsync(out);
+	write(lock,buf,amt);
+	fsync(lock);
 	return true;
 }
