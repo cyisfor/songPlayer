@@ -51,7 +51,8 @@ class Pkg:
 	MEDIA = Package("MEDIA")
 	GUI = Package("GUI")
 	GCRYPT = Package("GCRYPT")
-
+	GLIB = Package("GLIB")
+	
 class Glade:
 	sources = None
 	def added(self,parent):
@@ -61,12 +62,11 @@ class Glade:
 		parent.sources.append(source)
 glade = Glade()
 
-class Q(Package):
+class Q:
 	sources = ("queue.c","adjust.c")
 	def __init__(self):
-		super(Q, self).__init__("GLIB")
 	def added(self,parent):
-		super(Q, self).added(parent)
+		Pkg.GLIB.added(parent)
 		songdb.added(parent)
 		parent.addCflags("-pthread")
 
@@ -110,7 +110,7 @@ program('nowplaying-make',noinst=True)
 program('pause',songdb,glade,'get_pid.c','config.c')
 program('player','config.c','get_pid.c',queue,'select.c','signals.c',
 				'synchronize.c',Pkg.MEDIA)
-program('playlist','nextreactor.c',songdb)
+program('playlist','nextreactor.c',songdb,Pkg.GLIB)
 program('ratebyalbum',songdb)
 program('ratebytitle',songdb)
 program('replay',queue,'synchronize.c')
