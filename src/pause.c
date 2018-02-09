@@ -53,13 +53,13 @@ int main(void) {
 			kill(pid,SIGCONT);
 			stopped = false;
 			gtk_image_set_from_gicon(image, stop, GTK_ICON_SIZE_LARGE_TOOLBAR);
-			gtk_widget_set_tooltip_text(top, "Pause");
+			gtk_widget_set_tooltip_text(image, "Pause");
 		} else {
 			fputs("stopping player ",stdout);
 			kill(pid, SIGSTOP);
 			stopped = true;
 			gtk_image_set_from_gicon(image, play, GTK_ICON_SIZE_LARGE_TOOLBAR);
-			gtk_widget_set_tooltip_text(top, "Play");
+			gtk_widget_set_tooltip_text(image, "Play");
 		}
 		printf("%d\n",pid);
 		return G_SOURCE_REMOVE;
