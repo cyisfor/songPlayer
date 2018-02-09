@@ -439,6 +439,7 @@ int main (int argc, char ** argv)
   // this parses the FLAC tags to replay gain stuff.
   GstElement* decoder = gst_element_factory_make("decodebin",NULL);
   GstElement* converter = gst_element_factory_make("audioconvert",NULL);
+	GstElement* resampler = gst_element_factory_make("audioresample",NULL);
   GstElement* adjuster = NULL;
 
   if(!getenv("noreplaygain")) {
@@ -478,17 +479,17 @@ int main (int argc, char ** argv)
 
   if(adjuster)
     gst_bin_add_many (GST_BIN (pipeline), src, decoder,
-		      converter, adjuster,
+		      adjuster, converter, resampler,
 		      sink, NULL);
   else
-	  gst_bin_add_many (GST_BIN (pipeline), src, decoder, converter, sink, NULL);
+	  gst_bin_add_many (GST_BIN (pipeline), src, decoder, converter, resampler, sink, NULL);
 
   gst_element_link(src,decoder);
   if(adjuster) {
-    gst_element_link_many(converter, adjuster, sink, NULL);
+    gst_element_link_many(converter, adjuster, resampler, sink, NULL);
     g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   } else {
-	  gst_element_link_many(converter, sink, NULL);
+	  gst_element_link_many(converter, resampler, sink, NULL);
 	  g_signal_connect (decoder, "pad-added", G_CALLBACK (on_new_pad), converter);
   }
 

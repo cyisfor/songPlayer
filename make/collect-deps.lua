@@ -10,6 +10,7 @@ local deps = {}
 local function collect(src)
     if deps[src] then return end
     deps[src] = true
+		print(src,"ture")
     src = src:sub(1,-2)..'c'
     local inp = io.popen("gcc '-DGLIB_CHECK_VERSION(a,b,c)' -MM "..src)
     local line = inp:read('*a')
