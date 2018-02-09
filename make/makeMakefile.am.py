@@ -1,4 +1,6 @@
 # sigh
+with open("make/Makefile.prefix.am") as inp:
+	print(inp.read())
 
 built_sources = []
 
@@ -103,7 +105,7 @@ program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT,LibG)
 program('migrate',songdb)
 program('mode',queue,'synchronize.c')
 program('next','config.c','get_pid.c',songdb)
-program('nowplaying','nextreactor.c',Fields)
+program('nowplaying','nextreactor.c',Fields,songdb)
 program('nowplaying-make',noinst=True)
 program('pause',songdb,glade,'get_pid.c','config.c')
 program('player','config.c','get_pid.c',queue,'select.c','signals.c',
