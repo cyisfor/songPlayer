@@ -113,7 +113,7 @@ program('playlist','nextreactor.c',songdb,Pkg.GLIB)
 program('ratebyalbum',songdb)
 program('ratebytitle',songdb,glade)
 program('replay',queue,'synchronize.c')
-program('replaygain_scanner',songdb)
+program('replaygain_scanner',songdb,Pkg.MEDIA)
 program('testadjust','adjust.c',noinst=True)
 program('testqueue',queue,'select.c','synchronize.c',noinst=True)
 
