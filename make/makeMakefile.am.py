@@ -14,8 +14,10 @@ class pthread:
 		parent.addCflags("-pthread")
 pthread = pthread()
 
-class Program(str):
-	def __init__(self,name,noinst=False):
+class Program:
+	def __lt__(self,other):
+		return self.name < other.name 
+	def __init__(self,name,noinst):
 		self.noinst = noinst
 		self.name = name
 		self.sources = []
@@ -61,11 +63,12 @@ class Q(Package):
 		super(Q, self).added(parent)
 		songdb.added(parent)
 		parent.addCflags("-pthread")
+
 queue = Q()
 
 programs = []
 def program(name,*args,noinst=False):
-	p = Program(name,noinst=noinst)
+	p = Program(name,noinst)
 	for arg in args:
 		p.add(arg)
 	programs.append(p)
