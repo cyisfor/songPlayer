@@ -31,13 +31,29 @@ libsongdb_la_CFLAGS = $(DB_CFLAGS)
 libsongdb_la_LIBADD = $(DB_LIBS)
 
 addalbum_SOURCES = src/addalbum.c
-addalbum_LIBS = libsongdb
+addalbum_LDADD = libsongdb.la
+addalbum_CFLAGS = $(DB_CFLAGS)
 
 best_SOURCES = src/best.c
-best_LIBS = libsongdb
+best_LDADD = libsongdb.la $(MEDIA_LIBS)
+best_CFLAGS = $(DB_CFLAGS) $(MEDIA_CFLAGS)
 
 current_SOURCES = src/current.c
-current_LIBS = libsongdb
+current_LIBS = libsongdb.la
+current_CFLAGS = $(DB_CFLAGS)
+
+src/current.o: current.glade.ch
+current.glade.ch: current.glade.xml
+
+%.ch: %.xml ./data_to_header_string/pack
+	name=gladeFile ./data_to_header_string/pack <$< >$@.temp
+	mv $@.temp $@
+
+./data_to_header_string/pack: | ./data_to_header_string/
+	$(MAKE) -C $|
+
+./data_to_header_string/:
+	git clone ~/code/data_to_header_string/ 
 
 done_SOURCES = src/done.c src/adjust.c src/queue.c src/select.c src/synchronize.c
 done_LIBS = libsongdb

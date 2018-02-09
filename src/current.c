@@ -1,7 +1,7 @@
 #include "pq.h"
 #include "preparation.h"
 #include "settitle.h"
-#include "o/current.glade.ch"
+#include "current.glade.ch"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
