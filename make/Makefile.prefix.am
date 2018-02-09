@@ -1,0 +1,35 @@
+ACLOCAL_AMFLAGS = -Im4
+
+lib_LTLIBRARIES = libsongdb.la
+
+# since automake SUCKS you have to do this manually
+# all programs using queue.c must manually add GLIB_CFLAGS/LIBS
+# all programs using queue.c also add adjust.c but not vice versa
+# all programs using libsongdb must manually add DB_CFLAGS
+
+libsongdb_la_SOURCES = src/pq.c src/preparation.c
+libsongdb_la_CFLAGS = $(DB_CFLAGS)
+libsongdb_la_LIBADD = $(DB_LIBS)
+
+%.ch: %.xml ./data_to_header_string/pack
+	name=gladeFile ./data_to_header_string/pack <$< >$@.temp
+	mv $@.temp $@
+
+./data_to_header_string/pack: | ./data_to_header_string/
+	$(MAKE) -C $|
+
+./data_to_header_string/:
+	git clone ~/code/data_to_header_string/ 
+
+nowplaying.fields.ch: nowplaying.fields.conf nowplaying-make
+	./nowplaying-make <$< >$@.temp
+	mv $@.temp $@
+
+libguess/src/libguess/libguess.so: libguess/buildsys.mk
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+libguess/buildsys.mk: libguess/configure
+	cd $(dir $@) && ./configure --disable-shared
+
+libguess/configure: libguess/configure.ac
+	cd $(dir $@) && ./autogen.sh
