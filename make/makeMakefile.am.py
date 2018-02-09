@@ -50,7 +50,7 @@ class Pkg:
 	sources = None
 	MEDIA = Package("MEDIA")
 	GUI = Package("GUI")
-	GCRYPT = Package("LIBGCRYPT")
+	GCRYPT = Package("LIBGCRYPT") # this is hardcoded by gcrypt :/
 	GLIB = Package("GLIB")
 	
 class Glade:
