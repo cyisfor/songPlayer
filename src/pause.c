@@ -32,6 +32,15 @@ int main(void) {
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
 
 	bool stopped = false;
+	GError err = NULL;
+	GIcon* stop = g_icon_new_for_string("gtk-stop",&err);
+	if(stop == NULL) {
+		g_error("um stop");
+	}
+	GIcon* play = g_icon_new_for_string("gtk-media-play",&err);
+	if(play == NULL) {
+		g_error("um play");
+	}
 	gboolean toggle() {
 		int pid = get_pid("player",sizeof("player")-1);
 		if(pid < 0) {
@@ -43,13 +52,13 @@ int main(void) {
 			fputs("starting player ",stdout);
 			kill(pid,SIGCONT);
 			stopped = false;
-			gtk_image_set_from_icon_name(image, "gtk-stop", GTK_ICON_SIZE_LARGE_TOOLBAR);
+			gtk_image_set_from_gicon(image, play, GTK_ICON_SIZE_LARGE_TOOLBAR);
 			gtk_widget_set_tooltip_text(top, "Pause");
 		} else {
 			fputs("stopping player ",stdout);
 			kill(pid, SIGSTOP);
 			stopped = true;
-			gtk_image_set_from_icon_name(image, "gtk-media-play", GTK_ICON_SIZE_LARGE_TOOLBAR);
+			gtk_image_set_from_gicon(image, stop, GTK_ICON_SIZE_LARGE_TOOLBAR);
 			gtk_widget_set_tooltip_text(top, "Play");
 		}
 		printf("%d\n",pid);
