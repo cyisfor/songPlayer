@@ -43,6 +43,7 @@ class Pkg:
 	sources = None
 	MEDIA = Package("MEDIA")
 	GUI = Package("GUI")
+	GCRYPT = Package("GCRYPT")
 
 class Glade:
 	sources = None
@@ -54,6 +55,8 @@ class Q(Package):
 	sources = ("src/queue.c",)
 	def __init__(self):
 		super(Q, self).__init__("GLIB")
+	def added(self,parent):
+		parent.addCflags("-pthread")
 queue = Q()
 
 def program(name,*args):
@@ -73,4 +76,9 @@ program('current',songdb,Pkg.GUI,glade)
 program('done',songdb,"adjust.c",queue,"select.c","synchronize.c")
 program('dscanner',songdb,Pkg.MEDIA)
 program('enqueue',songdb,queue)
-program('enqueuePath',songdb,"adjust.c",queue,pthread)
+program('enqueuePath',songdb,"adjust.c",queue)
+program('graph',"adjust.c")
+program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT)
+program('migrate',songdb)
+program('mode','adjust.c',queue,'synchronize.c',songdb)
+
