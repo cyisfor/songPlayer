@@ -1,7 +1,7 @@
 #include "pq.h"
 #include "preparation.h"
 #include "get_pid.h"
-#include "o/pause.glade.ch"
+#include "pause.glade.ch"
 #include "config.h"
 
 #include <gtk/gtk.h>

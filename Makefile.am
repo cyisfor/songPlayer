@@ -105,9 +105,9 @@ nowplaying.fields.ch: nowplaying.fields.conf nowplaying-make
 
 nowplaying_make_SOURCES = src/nowplaying-make.c
 
-pause_SOURCES = src/pause.c src/config.c src/get_pid.c
-pause_LDADD = libsongdb.la
-pause_CFLAGS = $(DB_CFLAGS) 
+pause_SOURCES = src/pause.c src/config.c src/get_pid.c pause.glade.ch
+pause_LDADD = libsongdb.la $(GUI_LIBS)
+pause_CFLAGS = $(DB_CFLAGS) $(GUI_CFLAGS)
 
 player_SOURCES = src/player.c src/adjust.c src/config.c src/get_pid.c src/queue.c src/select.c src/signals.c src/synchronize.c
 player_LIBS = libsongdb
