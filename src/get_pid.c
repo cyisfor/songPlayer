@@ -48,7 +48,7 @@ bool declare_pid(const char* application_name) {
 		.l_type = F_WRLCK,
 		.l_whence = SEEK_SET
 	};
-	if(0 != fcntl(out, F_SETLK, &info)) {
+	if(0 != fcntl(out, F_GETLK, &info)) {
 		if(errno == EACCES || errno == EAGAIN) {
 			close(out);
 			error(0,errno,"PID is %d\n",info.l_pid);
@@ -61,6 +61,7 @@ bool declare_pid(const char* application_name) {
 		perror("Bad lock");
 		exit(23);
 	}
+	error(23,errno,"oops %d\n",info.l_pid);
 	atexit(get_pid_done);
 	char buf[0x100];
 	ssize_t amt = snprintf(buf,0x100,"%d",getpid());
