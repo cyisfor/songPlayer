@@ -48,6 +48,7 @@ class Pkg:
 class Glade:
 	sources = None
 	def added(self,parent):
+		Pkg.GUI.added(parent)
 		parent.sources.append(parent.name + ".glade.ch")
 glade = Glade()
 
@@ -56,6 +57,7 @@ class Q(Package):
 	def __init__(self):
 		super(Q, self).__init__("GLIB")
 	def added(self,parent):
+		super(Q, self).added(parent)
 		parent.addCflags("-pthread")
 queue = Q()
 
@@ -63,12 +65,18 @@ def program(name,*args):
 	p = Program(name)
 	for arg in args:
 		p.add(arg)
-	print(p.name+"_SOURCES =","src/"+p.name+".c",*p.sources)
+	derpname = p.name.replace("-","_").replace(".","_")
+	print(derpname+"_SOURCES =","src/"+p.name+".c",*p.sources)
 	if p.cflags:
-		print(p.name+"_CFLAGS =",*p.cflags)
+		print(derpname+"_CFLAGS =",*p.cflags)
 	if p.ldflags:
-		print(p.name+"_LDADD =",*p.ldflags)
+		print(derpname+"_LDADD =",*p.ldflags)
 	print("")
+
+class Fields:
+	def added(self,parent):
+		parent.sources.append(parent.name + ".fields.ch")
+Fields = Fields()
 
 program('addalbum',songdb)
 program('best',songdb,Pkg.MEDIA)
@@ -81,4 +89,7 @@ program('graph',"adjust.c")
 program('import',"derpstring.c","hash.c",songdb,Pkg.GCRYPT)
 program('migrate',songdb)
 program('mode','adjust.c',queue,'synchronize.c',songdb)
-
+program('next','config.c','get_pid.c',songdb)
+program('nowplaying','nextreactor.c',Fields)
+program('nowplaying-make')
+program('pause',glade,'get_pid.c','config.c')
