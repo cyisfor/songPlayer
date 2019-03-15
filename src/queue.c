@@ -315,7 +315,15 @@ static void* queueChecker(void* arg) {
   queuePrepare();
 	numQueued = prepare("SELECT COUNT(id) FROM queue");
 	
-#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (select recording from queue UNION SELECT id FROM song_problems UNION select id from problems UNION SELECT song FROM recordings WHERE lost)"
+#define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (" \
+		"SELECT song FROM recordings WHERE id IN ("													\
+		"SELECT recording FROM problems"																		\
+		" UNION "																														\
+		"select recording from queue)"																			\
+		" UNION "																														\
+		"SELECT id FROM song_problems UNION select id from problems"				\
+		" UNION "																														\
+		"SELECT song FROM recordings WHERE lost)"
 
   bestSongScoreRange = prepare
 		("SELECT MIN(ratings.score),MAX(ratings.score) " FROM_BEST_SONG);
