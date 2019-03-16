@@ -12,11 +12,15 @@
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
 
-void ensure_directory(const char* filename, int flen) {
+void ensure_directory(const char* filename, int flen, bool islast) {
 	int i = flen-1;
 	for(;i>=0;--i) {
 		if(filename[i] == '/') {
 			int dlen = i;
+			if(islast) {
+				ensure_directory(filename, dlen-1, false);
+				return;
+			}
 			char dir[dlen+1];
 			memcpy(dir, filename, dlen);
 			dir[dlen] = 0;
@@ -24,7 +28,7 @@ void ensure_directory(const char* filename, int flen) {
 			perror("boop");
 			if(errno == EEXIST) return;
 			if(errno == ENOTDIR) {
-				ensure_directory(filename, dlen-1);
+				ensure_directory(filename, dlen-1, false);
 				if(0 == mkdir(dir, 0755)) return;
 				if(errno == EEXIST) return; // uhh
 			}
@@ -87,7 +91,7 @@ int main(int argc, char *argv[])
 			memcpy(destpath,dest,destlen);
 			memcpy(destpath+destlen,srcpath,restlen);
 
-			ensure_directory(destpath, destlen+restlen);
+			ensure_directory(destpath, destlen+restlen, true);
 
 			{
 				const char* v2[] = { PQgetvalue(result,i,0), destpath };
