@@ -209,10 +209,13 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
   if(0!=strncmp(path,s,sizeof(s)-1)) return false; \
   path += sizeof(s)-1;
   advance("/");
-  if(for_format("/old/%s") || for_format("/old/old/%s")) return true;
+  if(for_format("/old/%s") ||
+		 // /old/old/extra/youtube/etc
+		 for_format("/old/old/%s") ||
+		 // /old/extra/shared/youtube/etc
+		 for_format("/old/extra/%s")) return true;
   advance("extra/");
-  if(for_format("/old/extra/%s") || for_format("/extra/old/%s") ||
-		 for_format("/old/extra/shared/%s")) return true;
+  if(for_format("/old/extra/%s") || for_format("/extra/old/%s")) return true;
   advance("user/");
   if(for_format("/home/%s") || for_format("/extra/%s")) return true;
 	g_warning("Can't find %s",path);
