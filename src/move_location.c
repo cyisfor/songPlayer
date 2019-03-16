@@ -72,8 +72,11 @@ int main(int argc, char *argv[])
 			"encode(path,'escape') LIKE $1::text LIMIT 500");
 	preparation update = prepare(
 			"UPDATE recordings SET path = $2 WHERE id = $1");
+	preparation problem = prepare(
+			"INSERT INTO problems (id) VALUES ($1)");
 	preparation begin = prepare("BEGIN");
 	preparation commit = prepare("COMMIT");
+	preparation rollback = prepare("ROLLBACK");
 
 			
 	const char* values[] = { like };
@@ -157,6 +160,14 @@ int main(int argc, char *argv[])
 					ensure(0==close(out));
 					ensure(0==close(inp));
 					ensure(0==rename(temppath,destpath));
+				} else if(errno == ENOENT) {
+					printf("%s not found\n", srcpath);
+					const char* v2[] = { PQgetvalue(result,i,0) };
+					const int l2[] = { PQgetlength(result,i,0) };
+					const int fmt[] = { 1 };
+					PQclear(prepare_exec(rollback, 0, NULL, NULL, NULL, 0));
+					PQclear(prepare_exec(problem, 1, v2, l2, fmt, 1));
+					continue;
 				} else {
 					error(errno, errno, "washt %s",srcpath);
 					exit(3);
