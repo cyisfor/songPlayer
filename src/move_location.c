@@ -12,6 +12,26 @@
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
 
+void ensure_directory(const char* filename, int flen) {
+	int i = flen-1;
+	for(;i>=0;--i) {
+		if(filename[i] == '/') {
+			int dlen = i;
+			ensure_directory(filename, dlen-1);
+			char dir[dlen+1];
+			memcpy(dir, filename, dlen);
+			dir[dlen] = 0;
+			if(0 == mkdir(dir, 0755)) return;
+			if(errno == EEXIST) return;
+			perror("mkdir failed");
+			abort();
+		}
+	}
+	fwrite(filename, flen, 1, stdout);
+	puts("\nUhhh no slash?");
+	abort();
+}
+
 int main(int argc, char *argv[])
 {
 	if(argc != 3) exit(1);
@@ -61,6 +81,8 @@ int main(int argc, char *argv[])
 			char destpath[destlen + restlen + 1];
 			memcpy(destpath,dest,destlen);
 			memcpy(destpath+destlen,srcpath,restlen);
+
+			ensure_destloc(destpath, destlen+restlen);
 
 			{
 				const char* v2[] = { PQgetvalue(result,i,0), destpath };
