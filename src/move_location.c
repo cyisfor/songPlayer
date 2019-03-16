@@ -96,6 +96,8 @@ int main(int argc, char *argv[])
 			assert(0==memcmp(srcpath, src, srclen));
 			const char* restpath = srcpath + srclen;
 			int restlen = PQgetlength(result,i,1) - srclen;
+			printf("Saving %.*s\n",restlen,restpath);
+			getchar();
 			char destpath[destlen + restlen + 1];
 			memcpy(destpath,dest,destlen);
 			memcpy(destpath+destlen,restpath,restlen);
@@ -112,6 +114,13 @@ int main(int argc, char *argv[])
 				PQclear(prepare_exec(update, 2, v2, l2, fmt, 1));
 			}
 			destpath[destlen+restlen] = 0;
+			{
+				struct stat ignore;
+				if(0==stat(destpath,&ignore)) {
+					PQclear(prepare_exec(commit, 0, NULL, NULL, NULL, 0));
+					continue;
+				}
+			}
 
 			if(0 != rename(srcpath, destpath)) {
 				if(errno == EXDEV) {
