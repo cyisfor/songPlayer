@@ -46,6 +46,7 @@ bin_PROGRAMS =  \
   import \
   migrate \
   mode \
+	move_location \
   next \
   nowplaying \
   pause \
@@ -108,6 +109,10 @@ migrate_LDADD = libsongdb.la
 mode_SOURCES = src/mode.c src/queue.c src/adjust.c src/synchronize.c
 mode_CFLAGS = $(GLIB_CFLAGS) $(DB_CFLAGS) -pthread
 mode_LDADD = $(GLIB_LIBS) libsongdb.la
+
+move_location_SOURCES = src/move_location.c
+move_location_CFLAGS =$(DB_CFLAGS)
+move_location_LDADD = libsongdb.la
 
 next_SOURCES = src/next.c src/config.c src/get_pid.c
 next_CFLAGS = $(DB_CFLAGS)

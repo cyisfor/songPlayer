@@ -8,6 +8,7 @@
 #include <fcntl.h> // open, O_*
 #include <stdlib.h> // abort
 #include <assert.h>
+#include <errno.h>
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
 
@@ -18,6 +19,7 @@ int main(int argc, char *argv[])
 	const char* src = argv[1];
 	const char* dest = argv[2];
 	int srclen = strlen(src);
+	int destlen = strlen(dest);
 	char like[srclen + 2];
 	memcpy(like,src,srclen);
 	like[srclen] = '%';
