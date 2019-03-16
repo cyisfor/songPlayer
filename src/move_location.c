@@ -113,12 +113,12 @@ int main(int argc, char *argv[])
 			if(0 != rename(srcpath, destpath)) {
 				if(errno == EXDEV) {
 					int destdirlen = dirnamelen(destpath, destlen+restlen);
-					char temppath[destdirlen+1];
+					char temppath[destdirlen+8];
 					memcpy(temppath, destpath, destdirlen);
-					temppath[destdirlen+1] = 0;
+					memcpy(temppath,"/XXXXXX\0",sizeof("/XXXXXX\0")-1);
 					int inp = open(srcpath,O_RDONLY);
 					assert(inp >= 0);
-					int out = open(temppath, O_WRONLY | O_CREAT, 0644);
+					int out = mkstemp(temppath);
 					assert(out >= 0);
 					for(;;) {
 						ssize_t amt = sendfile(out, inp, NULL, 0x10000);
@@ -131,6 +131,7 @@ int main(int argc, char *argv[])
 					ensure(0==fsync(out));
 					struct stat info;
 					ensure(0==stat(srcpath, &info));
+					fchmod(out, info.st_mode);
 					{
 						const struct timespec times[2] = {
 							info.st_atim,
