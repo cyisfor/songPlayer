@@ -29,7 +29,7 @@ void ensure_directory(const char* filename, int flen, bool islast) {
 			if(0 == mkdir(dir, 0755)) return;
 			perror("boop");
 			if(errno == EEXIST) return;
-			if(errno == ENOTDIR) {
+			if(errno == ENOENT) {
 				ensure_directory(filename, dlen, false);
 				if(0 == mkdir(dir, 0755)) return;
 				if(errno == EEXIST) return; // uhh
@@ -104,6 +104,7 @@ int main(int argc, char *argv[])
 		
 				PQclear(prepare_exec(update, 2, v2, l2, fmt, 1));
 			}
+			destpath[destlen+restlen] = 0;
 
 			if(0 != rename(srcpath, destpath)) {
 				if(errno == EXDEV) {
