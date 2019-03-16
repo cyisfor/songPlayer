@@ -317,7 +317,7 @@ static void* queueChecker(void* arg) {
 	
 #define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (" \
 		"SELECT song FROM recordings WHERE id IN ("													\
-		"SELECT recording FROM problems"																		\
+		"SELECT id FROM problems"																		\
 		" UNION "																														\
 		"select recording from queue)"																			\
 		" UNION "																														\
