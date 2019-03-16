@@ -17,12 +17,17 @@ void ensure_directory(const char* filename, int flen) {
 	for(;i>=0;--i) {
 		if(filename[i] == '/') {
 			int dlen = i;
-			ensure_directory(filename, dlen-1);
 			char dir[dlen+1];
 			memcpy(dir, filename, dlen);
 			dir[dlen] = 0;
 			if(0 == mkdir(dir, 0755)) return;
+			perror("boop");
 			if(errno == EEXIST) return;
+			if(errno == ENOTDIR) {
+				ensure_directory(filename, dlen-1);
+				if(0 == mkdir(dir, 0755)) return;
+				if(errno == EEXIST) return; // uhh
+			}
 			perror("mkdir failed");
 			abort();
 		}
@@ -82,7 +87,7 @@ int main(int argc, char *argv[])
 			memcpy(destpath,dest,destlen);
 			memcpy(destpath+destlen,srcpath,restlen);
 
-			ensure_destloc(destpath, destlen+restlen);
+			ensure_directory(destpath, destlen+restlen);
 
 			{
 				const char* v2[] = { PQgetvalue(result,i,0), destpath };
