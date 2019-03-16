@@ -30,7 +30,7 @@ void ensure_directory(const char* filename, int flen, bool islast) {
 			perror("boop");
 			if(errno == EEXIST) return;
 			if(errno == ENOENT) {
-				ensure_directory(filename, dlen, false);
+				ensure_directory(dir, dlen, false);
 				if(0 == mkdir(dir, 0755)) return;
 				if(errno == EEXIST) return; // uhh
 			}
@@ -130,7 +130,6 @@ int main(int argc, char *argv[])
 						};
 						futimens(out, times);
 					}
-					
 					ensure(0==close(out));
 					ensure(0==close(inp));
 				} else {
