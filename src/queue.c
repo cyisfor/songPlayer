@@ -187,6 +187,8 @@ void queueRescore(void) {
     PQcheckClear(prepare_exec(rateByPlayer,0,NULL,NULL,NULL,0));
 }
 
+#define LITLEN(a) a, sizeof(a)-1
+
 bool try_to_find(const char* path, const char* recording, int rlen) {
   struct stat derp;
   char buf[0x1000];
@@ -205,19 +207,53 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
     }
     return false;
   }
-#define advance(s) \
-  if(0!=strncmp(path,s,sizeof(s)-1)) return false; \
-  path += sizeof(s)-1;
-  advance("/");
-  if(for_format("/old/%s") ||
-		 // /old/old/extra/youtube/etc
-		 for_format("/old/old/%s") ||
-		 // /old/extra/shared/youtube/etc
-		 for_format("/old/extra/%s")) return true;
-  advance("extra/");
-  if(for_format("/old/extra/%s") || for_format("/extra/old/%s")) return true;
-  advance("user/");
-  if(for_format("/home/%s") || for_format("/extra/%s")) return true;
+
+	/*
+		strip leading /extra, /shared /home, then try
+		/old/old/extra/
+		/old/old/extra/shared/
+		etc
+	*/
+	int pathlen = strlen(path);
+	bool advance(const char* test, int len) {
+		if(0!=strncmp(path,test,len)) return false;
+		path += len;
+		pathlen -= len;
+	}
+	advance("/old");
+	advance("/old");
+
+	bool check(const char* middle, int mlen) {
+		bool check_one(const char* prefix, int plen) {
+			char destpath[pathlen+plen+mlen];
+			memcpy(destpath, prefix, plen);
+			memcpy(destpath+plen, middle, mlen);
+			memcpy(destpath+plen+mlen, path, pathlen);
+			destpath[plen+mlen+pathlen] = 0;
+			struct stat derp;
+			if(0 == stat(destpath, &derp)) {
+				return true;
+			}
+			return false;
+		}
+		return check_one(LITLEN("/old/")) ||
+			check_one(LITLEN("/old/old/"));
+	}
+#define CHECK(a) check(LITLEN(a))
+	
+	if(advance("extra/")) {
+		/* /extra/stuff could be the old "shared" or the decrypted
+			 /extra/home stuff, so check for it in /old/extra, /old/old/extra,
+			 /old/shared /old/old/shared */
+		if(CHECK("extra") || CHECK("shared")) return true;
+	} else if(advance("shared")) {
+		/* /shared becomes $old/extra/shared when not remounted */
+		if(CHECK("extra/shared") || CHECK("shared") || CHECK("extra")) return true;
+	} else if(CHECK("extra") || CHECK("extra/home") || CHECK("shared") ||
+						CHECK("extra/shared") || CHECK("home")) {
+		return true;
+	}
+
 	g_warning("Can't find %s",path);
 	return false;
 }
