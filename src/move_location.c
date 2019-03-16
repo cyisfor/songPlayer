@@ -9,6 +9,8 @@
 #include <stdlib.h> // abort
 #include <assert.h>
 #include <errno.h>
+#include <sys/stat.h> //mkdir
+
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
 
@@ -18,7 +20,7 @@ void ensure_directory(const char* filename, int flen, bool islast) {
 		if(filename[i] == '/') {
 			int dlen = i;
 			if(islast) {
-				ensure_directory(filename, dlen-1, false);
+				ensure_directory(filename, dlen, false);
 				return;
 			}
 			char dir[dlen+1];
@@ -28,7 +30,7 @@ void ensure_directory(const char* filename, int flen, bool islast) {
 			perror("boop");
 			if(errno == EEXIST) return;
 			if(errno == ENOTDIR) {
-				ensure_directory(filename, dlen-1, false);
+				ensure_directory(filename, dlen, false);
 				if(0 == mkdir(dir, 0755)) return;
 				if(errno == EEXIST) return; // uhh
 			}
