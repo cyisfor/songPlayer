@@ -14,32 +14,36 @@
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
 
-void ensure_directory(const char* filename, int flen, bool islast) {
+int dirnamelen(const char* filename, int flen) {
 	int i = flen-1;
 	for(;i>=0;--i) {
 		if(filename[i] == '/') {
-			int dlen = i;
-			if(islast) {
-				ensure_directory(filename, dlen, false);
-				return;
-			}
-			char dir[dlen+1];
-			memcpy(dir, filename, dlen);
-			dir[dlen] = 0;
-			if(0 == mkdir(dir, 0755)) return;
-			perror("boop");
-			if(errno == EEXIST) return;
-			if(errno == ENOENT) {
-				ensure_directory(dir, dlen, false);
-				if(0 == mkdir(dir, 0755)) return;
-				if(errno == EEXIST) return; // uhh
-			}
-			perror("mkdir failed");
-			abort();
+			return i;
 		}
 	}
-	fwrite(filename, flen, 1, stdout);
-	puts("\nUhhh no slash?");
+}
+
+void ensure_directory(const char* filename, int flen, bool isfile) {
+	if(isfile) {
+		int dlen = dirnamelen(filename, flen);
+		assert(dlen > 0);
+		ensure_directory(filename, dlen, false);
+		return;
+	}
+
+	char unixsux[flen+1];
+	memcpy(unixsux, filename, flen);
+	unixsux[flen] = 0;
+	if(0 == mkdir(unixsux, 0755)) return;
+	perror("boop");
+	if(errno == ENOENT) {
+		int dlen = dirnamelen(filename, flen);
+		assert(dlen > 0);
+		ensure_directory(filename, dlen, false);
+		if(0 == mkdir(unixsux, 0755)) return;
+	}
+	if(errno == EEXIST) return;
+	perror("mkdir failed");
 	abort();
 }
 
@@ -108,9 +112,13 @@ int main(int argc, char *argv[])
 
 			if(0 != rename(srcpath, destpath)) {
 				if(errno == EXDEV) {
+					int destdirlen = dirnamelen(destpath, destlen+restlen);
+					char temppath[destdirlen+1];
+					memcpy(temppath, destpath, destdirlen);
+					temppath[destdirlen+1] = 0;
 					int inp = open(srcpath,O_RDONLY);
 					assert(inp >= 0);
-					int out = open(destpath, O_WRONLY | O_CREAT, 0644);
+					int out = open(temppath, O_WRONLY | O_CREAT, 0644);
 					assert(out >= 0);
 					for(;;) {
 						ssize_t amt = sendfile(out, inp, NULL, 0x10000);
@@ -132,6 +140,7 @@ int main(int argc, char *argv[])
 					}
 					ensure(0==close(out));
 					ensure(0==close(inp));
+					ensure(0==rename(temppath,destpath));
 				} else {
 					perror("washt");
 					exit(3);
