@@ -189,39 +189,29 @@ void queueRescore(void) {
 
 #define LITLEN(a) a, sizeof(a)-1
 
-bool try_to_find(const char* path, const char* recording, int rlen) {
+bool try_to_find(const char* oldpath, const char* recording, int rlen) {
   struct stat derp;
-  char buf[0x1000];
-  const char* parameters[] = { buf, recording };      
+  const char* parameters[] = { NULL, recording };
   int len[] = { 0, rlen };
   const int fmt[] = { 0, 1 };
 
-  bool for_format(const char* fmtderp) {
-    len[0] = snprintf(buf,0x1000,fmtderp,path);
-		//g_warning("trying place %s", fmtderp);
-    if(0==stat(buf,&derp)) {
-      g_warning("found %s in %s\n",path,buf);
-      PQcheckClear(prepare_exec(updatePath, 
-  	2,parameters,len,fmt,0));
-      return true;
-    }
-    return false;
-  }
-
+	const char* path = oldpath;
+	int pathlen = strlen(oldpath);
 	/*
 		strip leading /extra, /shared /home, then try
 		/old/old/extra/
 		/old/old/extra/shared/
 		etc
 	*/
-	int pathlen = strlen(path);
+
 	bool advance(const char* test, int len) {
 		if(0!=strncmp(path,test,len)) return false;
 		path += len;
 		pathlen -= len;
 	}
-	advance("/old");
-	advance("/old");
+#define ADVANCE(a) advance(LITLEN(a))
+	ADVANCE("/old");
+	ADVANCE("/old");
 
 	bool check(const char* middle, int mlen) {
 		bool check_one(const char* prefix, int plen) {
@@ -232,6 +222,12 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 			destpath[plen+mlen+pathlen] = 0;
 			struct stat derp;
 			if(0 == stat(destpath, &derp)) {
+				g_warning("found %s in %s\n",path,destpath);
+				parameters[0] = destpath;
+				len[0] = plen+mlen+pathlen;
+				PQcheckClear(prepare_exec(updatePath,
+																	2,parameters,len,fmt,0));
+
 				return true;
 			}
 			return false;
@@ -241,12 +237,12 @@ bool try_to_find(const char* path, const char* recording, int rlen) {
 	}
 #define CHECK(a) check(LITLEN(a))
 	
-	if(advance("extra/")) {
+	if(ADVANCE("/extra")) {
 		/* /extra/stuff could be the old "shared" or the decrypted
 			 /extra/home stuff, so check for it in /old/extra, /old/old/extra,
 			 /old/shared /old/old/shared */
 		if(CHECK("extra") || CHECK("shared")) return true;
-	} else if(advance("shared")) {
+	} else if(ADVANCE("/shared")) {
 		/* /shared becomes $old/extra/shared when not remounted */
 		if(CHECK("extra/shared") || CHECK("shared") || CHECK("extra")) return true;
 	} else if(CHECK("extra") || CHECK("extra/home") || CHECK("shared") ||
