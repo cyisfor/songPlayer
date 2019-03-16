@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 			const char* restpath = srcpath + srclen;
 			int restlen = PQgetlength(result,i,1) - srclen;
 			printf("Saving %.*s\n",restlen,restpath);
-			getchar();
+//			getchar();
 			char destpath[destlen + restlen + 1];
 			memcpy(destpath,dest,destlen);
 			memcpy(destpath+destlen,restpath,restlen);
@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
 			PQclear(prepare_exec(commit, 0, NULL, NULL, NULL, 0));		
 		
 		}
+		PQclear(result);
 		puts("try again?");
 	}
 	return 0;
