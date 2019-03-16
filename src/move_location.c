@@ -47,6 +47,10 @@ void ensure_directory(const char* filename, int flen, bool isfile) {
 	abort();
 }
 
+#define LITSIZ(a) (sizeof(a)-1)
+#define LITLEN(a) a, LITSIZ(a)
+#define EXXES "/XXXXXX\0"
+
 int main(int argc, char *argv[])
 {
 	if(argc != 3) exit(1);
@@ -113,9 +117,9 @@ int main(int argc, char *argv[])
 			if(0 != rename(srcpath, destpath)) {
 				if(errno == EXDEV) {
 					int destdirlen = dirnamelen(destpath, destlen+restlen);
-					char temppath[destdirlen+8];
+					char temppath[destdirlen+LITSIZ(EXXES)];
 					memcpy(temppath, destpath, destdirlen);
-					memcpy(temppath,"/XXXXXX\0",sizeof("/XXXXXX\0")-1);
+					memcpy(temppath+destdirlen,LITLEN(EXXES));
 					int inp = open(srcpath,O_RDONLY);
 					assert(inp >= 0);
 					int out = mkstemp(temppath);
