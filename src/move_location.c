@@ -49,7 +49,7 @@ void ensure_directory(const char* filename, int flen, bool isfile) {
 
 #define LITSIZ(a) (sizeof(a)-1)
 #define LITLEN(a) a, LITSIZ(a)
-#define EXXES "/XXXXXX\0"
+#define EXXES "/.tempXXXXXX\0"
 
 int main(int argc, char *argv[])
 {
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
 					int out = mkstemp(temppath);
 					assert(out >= 0);
 					for(;;) {
-						ssize_t amt = sendfile(out, inp, NULL, 0x10000);
+						ssize_t amt = sendfile(out, inp, NULL, 0x1000000);
 						if(amt == 0) break;
 						if(amt < 0) {
 							perror("huh?");
