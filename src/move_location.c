@@ -87,11 +87,11 @@ int main(int argc, char *argv[])
 			const char* srcpath = PQgetvalue(result,i,1);
 			assert(srcpath);
 			assert(0==memcmp(srcpath, src, srclen));
-			srcpath += srclen;
+			const char* restpath = srcpath + srclen;
 			int restlen = PQgetlength(result,i,1) - srclen;
 			char destpath[destlen + restlen + 1];
 			memcpy(destpath,dest,destlen);
-			memcpy(destpath+destlen,srcpath,restlen);
+			memcpy(destpath+destlen,restpath,restlen);
 
 			ensure_directory(destpath, destlen+restlen, true);
 
@@ -121,6 +121,16 @@ int main(int argc, char *argv[])
 						}
 					}
 					ensure(0==fsync(out));
+					struct stat info;
+					ensure(0==stat(srcpath, &info));
+					{
+						const struct timespec times[2] = {
+							info.st_atim,
+							info.st_mtim
+						};
+						futimens(out, times);
+					}
+					
 					ensure(0==close(out));
 					ensure(0==close(inp));
 				} else {
