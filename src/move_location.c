@@ -35,7 +35,6 @@ void ensure_directory(const char* filename, int flen, bool isfile) {
 	memcpy(unixsux, filename, flen);
 	unixsux[flen] = 0;
 	if(0 == mkdir(unixsux, 0755)) return;
-	perror("boop");
 	if(errno == ENOENT) {
 		int dlen = dirnamelen(filename, flen);
 		assert(dlen > 0);
@@ -127,6 +126,7 @@ int main(int argc, char *argv[])
 					for(;;) {
 						ssize_t amt = sendfile(out, inp, NULL, 0x1000000);
 						if(amt == 0) break;
+						if(amt < 0x1000000) break;
 						if(amt < 0) {
 							perror("huh?");
 							exit(2);
