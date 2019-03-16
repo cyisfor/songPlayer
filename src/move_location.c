@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/stat.h> //mkdir
+#include <error.h>
 
 
 #define ensure(a) if(!(a)) { perror("ensure faildeded " #a); abort(); }
@@ -67,7 +68,8 @@ int main(int argc, char *argv[])
 	
 	preparation find = prepare(
 			"SELECT id, path FROM recordings "
-			"WHERE encode(path,'escape') LIKE $1::text LIMIT 500");
+			"WHERE id NOT IN (SELECT id FROM problems) AND "
+			"encode(path,'escape') LIKE $1::text LIMIT 500");
 	preparation update = prepare(
 			"UPDATE recordings SET path = $2 WHERE id = $1");
 	preparation begin = prepare("BEGIN");
@@ -156,7 +158,7 @@ int main(int argc, char *argv[])
 					ensure(0==close(inp));
 					ensure(0==rename(temppath,destpath));
 				} else {
-					perror("washt");
+					error(errno, errno, "washt %s",srcpath);
 					exit(3);
 				}
 			}
