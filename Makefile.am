@@ -34,9 +34,6 @@ libguess/buildsys.mk: libguess/configure
 libguess/configure: libguess/configure.ac
 	cd $(dir $@) && ./autogen.sh
 
-install:
-	install $(srcdir)/libguess/src/libguess/libguess.so $(libdir)/libguess.so.1
-
 bin_PROGRAMS =  \
   addalbum \
   best \
@@ -104,7 +101,7 @@ graph_SOURCES = src/graph.c src/adjust.c
 import_SOURCES = src/import.c src/derpstring.c src/hash.c
 import_CFLAGS = $(DB_CFLAGS) $(LIBGCRYPT_CFLAGS) -Ilibguess/src/
 import_LDADD = libsongdb.la $(LIBGCRYPT_LIBS) libguess/src/libguess/libguess.so
-import_LDFLAGS = -rpath $(libdir)
+import_LDFLAGS = -Wl,-rpath,$(libdir)/
 
 migrate_SOURCES = src/migrate.c
 migrate_CFLAGS = $(DB_CFLAGS)
@@ -161,4 +158,8 @@ testadjust_SOURCES = src/testadjust.c src/adjust.c
 testqueue_SOURCES = src/testqueue.c src/queue.c src/adjust.c src/synchronize.c src/select.c
 testqueue_CFLAGS = $(GLIB_CFLAGS) $(DB_CFLAGS) -pthread
 testqueue_LDADD = $(GLIB_LIBS) libsongdb.la
+
+
+install:
+	install $(srcdir)/libguess/src/libguess/libguess.so $(libdir)/libguess.so.1
 
