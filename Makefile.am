@@ -10,6 +10,8 @@ lib_LTLIBRARIES = libsongdb.la
 libsongdb_la_SOURCES = src/pq.c src/preparation.c
 libsongdb_la_CFLAGS = $(DB_CFLAGS)
 libsongdb_la_LIBADD = $(DB_LIBS)
+libsongdb_la_LDFLAGS = -Wl,-rpath,$(libdir)/:$(HOME)/.local/postgres/lib/
+
 
 %.ch: %.xml ./data_to_header_string/pack
 	name=gladeFile ./data_to_header_string/pack <$< >$@.temp
@@ -101,7 +103,6 @@ graph_SOURCES = src/graph.c src/adjust.c
 import_SOURCES = src/import.c src/derpstring.c src/hash.c
 import_CFLAGS = $(DB_CFLAGS) $(LIBGCRYPT_CFLAGS) -Ilibguess/src/
 import_LDADD = libsongdb.la $(LIBGCRYPT_LIBS) libguess/src/libguess/libguess.so
-import_LDFLAGS = -Wl,-rpath,$(libdir)/
 
 migrate_SOURCES = src/migrate.c
 migrate_CFLAGS = $(DB_CFLAGS)
@@ -160,6 +161,6 @@ testqueue_CFLAGS = $(GLIB_CFLAGS) $(DB_CFLAGS) -pthread
 testqueue_LDADD = $(GLIB_LIBS) libsongdb.la
 
 
-install:
+install-data-hook:
 	install $(srcdir)/libguess/src/libguess/libguess.so $(libdir)/libguess.so.1
 
