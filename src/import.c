@@ -194,7 +194,7 @@ int main(void) {
 		_checkPath = prepare
 			("SELECT id FROM recordings WHERE path = $1" );
 		_findRecording = prepare
-			("SELECT findRecording($1,$2,$3,$4,$5,$6)");
+			("SELECT findRecording($1::bytea,$2,$3,$4,$5,$6::bytea)");
 		updateRecording = prepare
 			("UPDATE recordings SET song=$1, recorded=$2, artist=$3 WHERE id=$4");
 		setPath = prepare
@@ -298,13 +298,17 @@ int main(void) {
             free(name.base);
             name.base = NULL;
         }
-        printf("Whee '%s' '%s' '%s' '%d'\n",title.base,artist.base,album.base,date.tm_year);
-
-				const char* charset = libguess_determine_encoding(title.base,title.len,"Baltic");
-				if(0!=strcmp(charset,"UTF-8")) {
-					puts(charset);
-					exit(23);
-				}
+        printf("Whee '%.*s' '%.*s' '%.*s' '%d'\n",
+			   STRING_FOR_PRINTF(title),
+			   STRING_FOR_PRINTF(artist),
+			   STRING_FOR_PRINTF(album),
+			   date.tm_year);
+		
+		const char* charset = libguess_determine_encoding(title.base,title.len,"Baltic");
+		if(0!=strcmp(charset,"UTF-8")) {
+			puts(charset);
+			exit(23);
+		}
 
         PQbegin();
 
