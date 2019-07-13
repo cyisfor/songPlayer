@@ -312,6 +312,8 @@ int main(void) {
 			exit(23);
 		}
 
+		printf("charset: %s\n", charset);
+
         PQbegin();
 
         string recorded = {};
@@ -321,7 +323,7 @@ int main(void) {
             strcat(template,".%d");
             recorded.base = alloca(0x40);
             recorded.len = snprintf(recorded.base,0x40,template,random());
-            printf("got date %s\n",recorded.base);
+            printf("got date %.*s\n",STRING_FOR_PRINTF(recorded));
             // these are the ends you bring me to postgresql!
         }
         PQcheckClear(findRecording(title,artist,album,recorded,path));
