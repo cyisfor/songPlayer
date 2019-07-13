@@ -25,7 +25,7 @@ nowplaying.fields.ch: nowplaying.fields.conf nowplaying-make
 	./nowplaying-make <$< >$@.temp
 	mv $@.temp $@
 
-libguess/src/libguess/libguess.so: libguess/buildsys.mk
+libguess	/src/libguess/libguess.so: libguess/buildsys.mk
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
 libguess/buildsys.mk: libguess/configure
@@ -101,6 +101,7 @@ graph_SOURCES = src/graph.c src/adjust.c
 import_SOURCES = src/import.c src/derpstring.c src/hash.c
 import_CFLAGS = $(DB_CFLAGS) $(LIBGCRYPT_CFLAGS) -Ilibguess/src/
 import_LDADD = libsongdb.la $(LIBGCRYPT_LIBS) libguess/src/libguess/libguess.so
+import_LDFLAGS = -rpath $(abspath $(srcdir))/libguess/src/libguess
 
 migrate_SOURCES = src/migrate.c
 migrate_CFLAGS = $(DB_CFLAGS)
