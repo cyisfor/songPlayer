@@ -1,5 +1,5 @@
-#define _XOPEN_SOURCE 900      /* See feature_test_macros(7) */
 #define _GNU_SOURCE
+#define _XOPEN_SOURCE 900      /* See feature_test_macros(7) */
 
 #include "libguess/libguess.h"
 #include "pq.h"
@@ -26,8 +26,8 @@
 int forkpipe(int notpipe[2]) {
     int in[2];
     int out[2];
-    pipe(in);
-    pipe(out);
+    assert(0==pipe(in));
+    assert(0==pipe(out));
     int pid = fork();
     if(pid==0) {
         dup2(in[0],0);
@@ -46,6 +46,8 @@ int forkpipe(int notpipe[2]) {
 
 #define DERPVAL(a) PQgetvalue(a,0,0)
 #define DERPLEN(a) PQgetlength(a,0,0)
+
+#define STRING_FOR_PRINTF(str) (int)str.len, str.base
 
 preparation emptyHashes,
 	setHash,
