@@ -368,6 +368,8 @@ static void* queueChecker(void* arg) {
 	
 	bestSongRange = prepare
 		("SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE);
+	bestSongs = prepare
+		("SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET ????");
 	bestSong = prepare
 		("SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET $2 LIMIT 1");
 	

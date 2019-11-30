@@ -2,9 +2,11 @@ AC_PREREQ([2.69])
 AC_INIT([songplayer], [1.0])
 AC_CONFIG_SRCDIR([src/player.c])
 AC_CONFIG_MACRO_DIRS([m4])
+AC_CONFIG_AUX_DIR([build-aux])
 AC_USE_SYSTEM_EXTENSIONS
 #AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_SILENT_RULES([yes])
 LT_INIT([static disable-shared])
 
 # Checks for programs.
@@ -46,9 +48,13 @@ AC_FUNC_STRNLEN
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([atexit dup2 gettimeofday memchr memmove memset mkdir realpath select setenv strchr strdup strpbrk strrchr strstr strtol strtoul])
 
+AM_PATH_LIBGCRYPT
 PKG_CHECK_MODULES(GUI,[gtk+-3.0])
+PKG_CHECK_MODULES(GLIB,[glib-2.0])
 PKG_CHECK_MODULES(DB,[libpq])
 PKG_CHECK_MODULES(MEDIA,[gstreamer-1.0])
+PKG_CHECK_MODULES(UV,[libuv])
+
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

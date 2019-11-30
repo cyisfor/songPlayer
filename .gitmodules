@@ -4,3 +4,6 @@
 [submodule "libguess"]
 	path = libguess
 	url = https://github.com/kaniini/libguess
+[submodule "data_to_header_string"]
+	path = data_to_header
+	url = git://github.com/cyisfor/data_to_header_string.git

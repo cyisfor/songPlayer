@@ -161,7 +161,7 @@ PGresult* findRecording(string title, string artist, string album, string record
 										 recorded.len,
 										 path.len
 	};
-	int fmt[6] = { 1, 0, 0, 0, 0, 1};
+	int fmt[6] = { 1, 1, 1, 1, 0, 1};
 	PGresult* id = prepare_exec(_findRecording,
 														 6,
 														 values,lengths,fmt,1);
