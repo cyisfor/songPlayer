@@ -18,6 +18,9 @@
 
 preparation bestSongScoreRange = NULL;
 preparation bestSongRange = NULL;
+#if 0
+preparation bestSongs = NULL;
+#endif
 preparation bestSong = NULL;
 preparation bestRecordingScoreRange = NULL;
 preparation bestRecording = NULL;
@@ -368,8 +371,11 @@ static void* queueChecker(void* arg) {
 	
 	bestSongRange = prepare
 		("SELECT COUNT(songs.id) " FROM_BEST_SONG_SCORE);
+#if 0
+	/* can't select multiple, since selecting changes the sort order with each one */
 	bestSongs = prepare
 		("SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET ????");
+#endif
 	bestSong = prepare
 		("SELECT songs.id,songs.title " FROM_BEST_SONG_SCORE " ORDER BY score,random() OFFSET $2 LIMIT 1");
 	

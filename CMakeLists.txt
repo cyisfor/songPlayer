@@ -122,7 +122,7 @@ linkup(
   LIBRARIES queue PkgConfig::GLIB)
 linkup(
   TARGETS playlist
-  LIBRARIES PkgConfig::GLIB)
+  LIBRARIES PkgConfig::UV PkgConfig::GLIB)
 linkup(
   TARGETS best dscanner player replaygain_scanner
   LIBRARIES PkgConfig::MEDIA)
@@ -153,6 +153,12 @@ install(FILES "${libguess}/src/libguess/libguess.so"
 
 foreach(target current pause ratebytitle)
   # ${CMAKE_CURRENT_BINARY_DIR}/ ?
-  target_sources("${target}" PRIVATE "${target}.glade.ch")
-  target_include_directories("${CMAKE_CURRENT_BINARY_DIR}")
+  target_sources("${target}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${target}.glade.ch")
+  target_include_directories("${target}" PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 endforeach()
+
+target_sources(nowplaying PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/nowplaying.fields.ch")
+
+target_include_directories(nowplaying PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+
+target_sources(graph PRIVATE src/adjust.c)
