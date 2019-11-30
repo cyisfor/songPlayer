@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.14)
+project(songpicker)
+
 include(FindPkgConfig)
 pkg_check_modules(DB
   REQUIRED IMPORTED_TARGET
