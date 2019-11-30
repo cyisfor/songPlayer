@@ -45,7 +45,7 @@ add_custom_command(
   COMMAND ./nowplaying-make 
   < "${CMAKE_CURRENT_SOURCE_DIR}/nowplaying.fields.conf"
   > "nowplaying.fields.ch"
-  MAIN_DEPENDENCY "nowplaying.fields.ch"
+  MAIN_DEPENDENCY "nowplaying.fields.conf"
   DEPENDS "nowplaying-make")
 
 set(libguess "${CMAKE_CURRENT_SOURCE_DIR}/libguess/")
