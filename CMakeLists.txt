@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.14)
 project(songpicker)
 
 include(FindPkgConfig)
+pkg_check_modules(CRYPT
+  REQUIRED IMPORTED_TARGET
+  libgcrypt)
 pkg_check_modules(DB
   REQUIRED IMPORTED_TARGET
   libpq)
@@ -53,7 +56,7 @@ add_custom_command(
   MAIN_DEPENDENCY "${libguess}/buildsys.mk")
 add_custom_command(
   OUTPUT "${libguess}/buildsys.mk"
-  COMMAND ./configure --disable-shared
+  COMMAND ./configure 
   WORKING_DIRECTORY "${libguess}"
   MAIN_DEPENDENCY "${libguess}/configure")
 add_custom_command(
@@ -108,9 +111,7 @@ target_link_options(queue PUBLIC -pthread)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
-  message(STATUS herp ${A_LIBRARIES})
   foreach(target IN LISTS A_TARGETS A_UNPARSED_ARGUMENTS)
-	message(STATUS derp ${target})
 	target_link_libraries("${target}" PRIVATE "${A_LIBRARIES}")
   endforeach()
 endfunction(linkup)
@@ -131,7 +132,7 @@ linkup(
 add_library(synchronize
   src/select.c
   src/synchronize.c)
-target_link_libraries(synchronize PUBLIC PkgConfig::GLIB PkgConfig::DB)
+target_link_libraries(synchronize PUBLIC PkgConfig::GLIB PkgConfig::DB queue)
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES synchronize)
@@ -165,6 +166,10 @@ target_include_directories(nowplaying PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_sources(graph PRIVATE src/adjust.c)
 target_link_libraries(graph PUBLIC m)
 
-target_link_libraries(import PRIVATE "${libguess}/src/libguess/libguess.so")
+add_library(hash
+  src/hash.c)
+target_link_libraries(hash PUBLIC PkgConfig::CRYPT)
+target_sources(import PRIVATE src/derpstring.c)
+target_link_libraries(import PRIVATE "${libguess}/src/libguess/libguess.so" hash)
 target_include_directories(import PRIVATE "${libguess}/src/")
 target_sources(player PRIVATE src/signals.c)
