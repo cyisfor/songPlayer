@@ -4,7 +4,7 @@ project(songpicker)
 include(FindPkgConfig)
 pkg_check_modules(DB
   REQUIRED IMPORTED_TARGET
-  pq)
+  libpq)
 pkg_check_modules(GLIB
   REQUIRED IMPORTED_TARGET
   glib-2.0)
@@ -21,7 +21,7 @@ pkg_check_modules(UV
 add_library(songdb
   src/pq.c src/preparation.c)
 target_link_libraries(songdb PUBLIC PkgConfig::DB)
-target_link_flags(songdb PUBLIC "-Wl,-rpath,${CMAKE_CURRENT_BINARY_DIR}")
+target_link_options(songdb PUBLIC "-Wl,-rpath,${CMAKE_CURRENT_BINARY_DIR}")
 
 add_subdirectory(data_to_header)
 function(d2h base)
@@ -30,9 +30,9 @@ function(d2h base)
   SOURCE "${base}.glade.xml"
   HEADER "${base}.glade.ch")
 endfunction()
-(d2h current)
-(d2h pause)
-(d2h ratebytitle)
+d2h(current)
+d2h(pause)
+d2h(ratebytitle)
 
 add_executable(nowplaying-make
   src/noplaying-make.c)
@@ -83,26 +83,28 @@ set(db_targets
   player
   playlist
   ratebyalbum
+  ratebytitle
   replay
   replaygain_scanner)
-
 
 set(targets
   ${db_targets}
   graph)
-
-install(TARGETS ${targets})
 
 foreach(target IN LISTS targets)
   add_executable("${target}"
 	"src/${target}.c")
 endforeach()
 
+install(TARGETS ${targets}
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
+
+
 add_library(queue
   src/queue.c
   src/adjust.c)
 target_link_libraries(queue PUBLIC songdb)
-target_compile_flags(queue PUBLIC -pthread)
+target_compile_options(queue PUBLIC -pthread)
 
 target_sources(current PUBLIC current.glade.ch)
 function(linkup)
@@ -141,7 +143,8 @@ linkup(
   TARGETS next pause player
   LIBRARIES get_pid)
 
-install(FILES "${libguess}/src/libguess/libguess.so")
+install(FILES "${libguess}/src/libguess/libguess.so"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
 foreach(target current nowplaying pause ratebytitle)
   # ${CMAKE_CURRENT_BINARY_DIR}/ ?
