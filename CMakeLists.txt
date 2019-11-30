@@ -35,7 +35,7 @@ d2h(pause)
 d2h(ratebytitle)
 
 add_executable(nowplaying-make
-  src/noplaying-make.c)
+  src/nowplaying-make.c)
 
 add_custom_command(
   OUTPUT "nowplaying.fields.ch"
@@ -99,17 +99,17 @@ endforeach()
 install(TARGETS ${targets}
   DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
-
 add_library(queue
   src/queue.c
   src/adjust.c)
-target_link_libraries(queue PUBLIC songdb)
+target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB)
 target_compile_options(queue PUBLIC -pthread)
 
-target_sources(current PUBLIC current.glade.ch)
 function(linkup)
-  cmake_parse_arguments(A "" "" "TARGETS;LIBRARIES")
+  cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
+  message(STATUS herp ${A_LIBRARIES} ${A_TARGETS} ${A_UNPARSED_ARGUMENTS})
   foreach(target IN LISTS A_TARGETS A_UNPARSED_ARGUMENTS)
+	message(STATUS derp ${target})
 	target_link_libraries("${target}" PRIVATE "${A_LIBRARIES}")
   endforeach()
 endfunction(linkup)
@@ -118,8 +118,11 @@ linkup(
   TARGETS ${db_targets}
   LIBRARIES songdb)
 linkup(
-  TARGETS done enqueue enqueuePath mode player replay testqueue
+  TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES queue PkgConfig::GLIB)
+linkup(
+  TARGETS playlist
+  LIBRARIES PkgConfig::GLIB)
 linkup(
   TARGETS best dscanner player replaygain_scanner
   LIBRARIES PkgConfig::MEDIA)
@@ -128,6 +131,7 @@ linkup(
   LIBRARIES PkgConfig::GUI)
 add_library(synchronize
   src/synchronize.c)
+target_link_libraries(synchronize PUBLIC PkgConfig::GLIB)
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES synchronize)
@@ -139,6 +143,7 @@ linkup(
 add_library(get_pid
   src/config.c
   src/get_pid.c)
+target_link_libraries(get_pid PUBLIC PkgConfig::DB)
 linkup(
   TARGETS next pause player
   LIBRARIES get_pid)
@@ -146,7 +151,8 @@ linkup(
 install(FILES "${libguess}/src/libguess/libguess.so"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 
-foreach(target current nowplaying pause ratebytitle)
+foreach(target current pause ratebytitle)
   # ${CMAKE_CURRENT_BINARY_DIR}/ ?
   target_sources("${target}" PRIVATE "${target}.glade.ch")
+  target_include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 endforeach()
