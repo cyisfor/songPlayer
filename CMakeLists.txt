@@ -121,9 +121,7 @@ linkup(
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES queue PkgConfig::GLIB)
-linkup(
-  TARGETS playlist
-  LIBRARIES PkgConfig::UV PkgConfig::GLIB)
+target_link_libraries(playlist PUBLIC PkgConfig::GLIB)
 linkup(
   TARGETS best dscanner player replaygain_scanner
   LIBRARIES PkgConfig::MEDIA)
@@ -131,16 +129,12 @@ linkup(
   TARGETS current pause ratebytitle
   LIBRARIES PkgConfig::GUI)
 add_library(synchronize
+  src/select.c
   src/synchronize.c)
-target_link_libraries(synchronize PUBLIC PkgConfig::GLIB)
+target_link_libraries(synchronize PUBLIC PkgConfig::GLIB PkgConfig::DB)
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES synchronize)
-add_library(select
-  src/select.c)
-linkup(
-  TARGETS done player
-  LIBRARIES select PkgConfig::DB)
 add_library(get_pid
   src/config.c
   src/get_pid.c)
@@ -148,6 +142,12 @@ target_link_libraries(get_pid PUBLIC PkgConfig::DB)
 linkup(
   TARGETS next pause player
   LIBRARIES get_pid)
+add_library(nextreactor
+  src/nextreactor.c)
+target_link_libraries(nextreactor PUBLIC PkgConfig::DB PkgConfig::UV)
+linkup(
+  TARGETS nowplaying playlist
+  LIBRARIES nextreactor)
 
 install(FILES "${libguess}/src/libguess/libguess.so"
   DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
@@ -167,3 +167,4 @@ target_link_libraries(graph PUBLIC m)
 
 target_link_libraries(import PRIVATE "${libguess}/src/libguess/libguess.so")
 target_include_directories(import PRIVATE "${libguess}/src/")
+target_sources(player PRIVATE src/signals.c)
