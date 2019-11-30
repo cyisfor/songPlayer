@@ -21,12 +21,12 @@ pkg_check_modules(UV
 add_library(songdb
   src/pq.c src/preparation.c)
 target_link_libraries(songdb PUBLIC PkgConfig::DB)
-target_link_options(songdb PUBLIC "-Wl,-rpath,${CMAKE_CURRENT_BINARY_DIR}")
+#target_link_options(songdb PUBLIC "-Wl,-rpath,${CMAKE_CURRENT_BINARY_DIR}")
 
 add_subdirectory(data_to_header)
 function(d2h base)
-  data_to_header("${base}"
-  NAME gladeFile
+  data_to_header(gladeFile
+  NAME "${base}"
   SOURCE "${base}.glade.xml"
   HEADER "${base}.glade.ch")
 endfunction()
@@ -102,12 +102,13 @@ install(TARGETS ${targets}
 add_library(queue
   src/queue.c
   src/adjust.c)
-target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB)
+target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB m)
 target_compile_options(queue PUBLIC -pthread)
+target_link_options(queue PUBLIC -pthread)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
-  message(STATUS herp ${A_LIBRARIES} ${A_TARGETS} ${A_UNPARSED_ARGUMENTS})
+  message(STATUS herp ${A_LIBRARIES})
   foreach(target IN LISTS A_TARGETS A_UNPARSED_ARGUMENTS)
 	message(STATUS derp ${target})
 	target_link_libraries("${target}" PRIVATE "${A_LIBRARIES}")
@@ -139,7 +140,7 @@ add_library(select
   src/select.c)
 linkup(
   TARGETS done player
-  LIBRARIES select)
+  LIBRARIES select PkgConfig::DB)
 add_library(get_pid
   src/config.c
   src/get_pid.c)
@@ -162,3 +163,7 @@ target_sources(nowplaying PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/nowplaying.fields
 target_include_directories(nowplaying PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 
 target_sources(graph PRIVATE src/adjust.c)
+target_link_libraries(graph PUBLIC m)
+
+target_link_libraries(import PRIVATE "${libguess}/src/libguess/libguess.so")
+target_include_directories(import PRIVATE "${libguess}/src/")
