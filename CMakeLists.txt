@@ -132,7 +132,7 @@ linkup(
   LIBRARIES queue PkgConfig::GLIB)
 linkup(
   TARGETS replay
-  LIBRARIES replaylib enqueue)
+  LIBRARIES replaylib)
 
 target_link_libraries(playlist PUBLIC PkgConfig::GLIB)
 linkup(
