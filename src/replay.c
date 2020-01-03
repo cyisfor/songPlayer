@@ -1,12 +1,15 @@
 #include "preparation.h"
 #include "queue.h"
 
+#include <assert.h> // 
+
+
 preparation getTopRecording = NULL;
 void replay_init(void) {
 	preparation getTopRecording = prepare
 		("SELECT queue.recording"
 		 " FROM queue ORDER BY queue.id ASC LIMIT 1");
-	g_assert(getTopRecording);
+	assert(getTopRecording);
 }
 
 void replay(void) {
