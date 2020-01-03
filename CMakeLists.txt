@@ -115,7 +115,8 @@ target_link_libraries(rating PUBLIC songdb)
 
 add_library(replaylib
   src/replay.c)
-target_link_libraries(replay PUBLIC songdb)
+target_link_libraries(replaylib PUBLIC songdb)
+target_link_libraries(replay PUBLIC replaylib)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
