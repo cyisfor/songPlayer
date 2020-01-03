@@ -1,12 +1,12 @@
-#include "select.h"
-#include "urlcodec.h"
-#include "config.h"
-#include "pq.h"
-#include "preparation.h"
-#include "synchronize.h"
-#include "queue.h"
-#include "signals.h"
-#include "get_pid.h"
+#include "../select.h"
+#include "../urlcodec.h"
+#include "../config.h"
+#include "../pq.h"
+#include "../preparation.h"
+#include "../synchronize.h"
+#include "../queue.h"
+#include "../signals.h"
+#include "../get_pid.h"
 
 #include <fcntl.h> // open O_RDONLY
 #include <unistd.h> // STDIN_FILENO
@@ -168,7 +168,7 @@ bus_call (GstBus     *bus,
   case GST_MESSAGE_TAG: {
     GstTagList *tags = NULL;
     if(tagHack==NULL) {
-      const char* it = configAt("tags");
+      const char* it = config_at("tags");
       tagHack = fopen(it,"wt");
     }
     gst_message_parse_tag (msg, &tags);
@@ -395,10 +395,16 @@ static void restartPlayer(int signal) {
     playerPlay();
 }
 
+GMainLoop* loop = NULL;
+static
+void done_quit() {
+	g_main_loop_quit(loop);
+}
+
 int main (int argc, char ** argv)
 {
 	pq_application_name = "song player";
-  configInit();
+  config_init();
   if(!declare_pid("player")) {
 	puts("Player already found");
 	return 1;
@@ -424,10 +430,8 @@ int main (int argc, char ** argv)
 		("UPDATE recordings SET lost = TRUE WHERE id = $1");
 
 
-  GMainLoop* loop = g_main_loop_new (NULL, FALSE);
-  void done_quit() {
-	g_main_loop_quit(loop);
-  }
+	loop = g_main_loop_new (NULL, FALSE);
+
   onSignal(SIGINT,done_quit);
   //onSignal(SIGQUIT,done_quit);
   //onSignal(SIGTERM,done_quit);
