@@ -4,6 +4,7 @@
 #include "current.glade.ch"
 #include "rating.h"
 #include "replay.h"
+#include "get_pid.h"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
@@ -45,7 +46,7 @@ struct update_properties_info {
 
 preparation getTopSong = NULL;
 
-gboolean update_properties(gpointer udata) {
+gboolean update_properties(gpointer unused) {
   //struct update_properties_info* inf = (struct update_properties_info*)udata;
   PGresult* result =
 	prepare_exec(getTopSong,
@@ -107,12 +108,14 @@ static
 void
 on_upvote (GtkButton *button, gpointer   user_data) {
 	do_rating("1");
+	update_properties(NULL);
 }
 
 static
 void
 on_downvote (GtkButton *button, gpointer   user_data) {
 	do_rating("-1");
+	update_properties(NULL);
 }
 
 static
@@ -140,6 +143,8 @@ on_restart (GtkButton *button, gpointer   user_data) {
 	}
 	waitpid(pid, NULL, 0);
 }
+
+bool stopped = false;
 
 static
 gboolean toggle(GtkImage* image) {
@@ -210,59 +215,59 @@ activate (GtkApplication* app,
   activated = true;
 	pq_application_name = "current song";
   PQinit();
-  replay_init();
-  rating_init();
-	getTopSong = prepare
-		("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
-		 "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
-		 "(SELECT score FROM ratings WHERE ratings.id = songs.id) AS score,"
-		 "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
-		 "songs.played, songs.id "
-		 "FROM queue "
-		 "INNER JOIN recordings ON recordings.id = queue.recording "
-		 "INNER JOIN songs ON recordings.song = songs.id "
-		 "LEFT OUTER JOIN albums ON recordings.album = albums.id "
-		 "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
-		 "ORDER BY queue.id ASC LIMIT 2"
-  );
+  replay_init(); 
+  rating_init(); // calls get_pid_init();
+  getTopSong = prepare
+	  ("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
+	   "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
+	   "(SELECT score FROM ratings WHERE ratings.id = songs.id) AS score,"
+	   "(SELECT AVG(connections.strength) FROM connections WHERE connections.red = (select id from mode)) AS average, "
+	   "songs.played, songs.id "
+	   "FROM queue "
+	   "INNER JOIN recordings ON recordings.id = queue.recording "
+	   "INNER JOIN songs ON recordings.song = songs.id "
+	   "LEFT OUTER JOIN albums ON recordings.album = albums.id "
+	   "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
+	   "ORDER BY queue.id ASC LIMIT 2"
+		  );
 
   GtkCssProvider * odd_style = gtk_css_provider_get_default ();
   GError* gerror = NULL;
   gtk_css_provider_load_from_data
-	(odd_style,
-	 LENSTR("GtkBox { background-color: white; }\n"),
-	 &gerror);
+	  (odd_style,
+	   LENSTR("GtkBox { background-color: white; }\n"),
+	   &gerror);
   assert(gerror==NULL);
 
   int i;
   for(i=0;i<NUM_ROWS;++i) {
-	GtkLabel* name = GTK_LABEL(gtk_label_new(rows[i]));
-	gtk_label_set_xalign(name,0);
-	labels[i] = GTK_LABEL(gtk_label_new(""));
-	gtk_label_set_line_wrap (labels[i],TRUE);
-	gtk_widget_set_hexpand (GTK_WIDGET(labels[i]),TRUE);
-	gtk_label_set_xalign(labels[i],0);
-	gtk_grid_insert_row (props, i);
-	void yoinkle(int column, GtkWidget* what) {
-	  gtk_widget_set_vexpand(what,FALSE);
-	  // no reason to make a huge style framework just for some padding
-	  // tricky... put it in a box, that has padding
-	  // then put the box in the grid
-	  gtk_widget_set_margin_start (what, 2);
-	  GtkWidget* padding = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
-	  gtk_box_pack_start(GTK_BOX(padding),what,TRUE,TRUE,2);
+	  GtkLabel* name = GTK_LABEL(gtk_label_new(rows[i]));
+	  gtk_label_set_xalign(name,0);
+	  labels[i] = GTK_LABEL(gtk_label_new(""));
+	  gtk_label_set_line_wrap (labels[i],TRUE);
+	  gtk_widget_set_hexpand (GTK_WIDGET(labels[i]),TRUE);
+	  gtk_label_set_xalign(labels[i],0);
+	  gtk_grid_insert_row (props, i);
+	  void yoinkle(int column, GtkWidget* what) {
+		  gtk_widget_set_vexpand(what,FALSE);
+		  // no reason to make a huge style framework just for some padding
+		  // tricky... put it in a box, that has padding
+		  // then put the box in the grid
+		  gtk_widget_set_margin_start (what, 2);
+		  GtkWidget* padding = gtk_box_new(GTK_ORIENTATION_HORIZONTAL,0);
+		  gtk_box_pack_start(GTK_BOX(padding),what,TRUE,TRUE,2);
 	  
-	  if(i % 2 == 1) {
-		gtk_style_context_add_provider
-		  (gtk_widget_get_style_context(padding),
-		   GTK_STYLE_PROVIDER(odd_style),
-		   GTK_STYLE_PROVIDER_PRIORITY_USER);
-	  }
+		  if(i % 2 == 1) {
+			  gtk_style_context_add_provider
+				  (gtk_widget_get_style_context(padding),
+				   GTK_STYLE_PROVIDER(odd_style),
+				   GTK_STYLE_PROVIDER_PRIORITY_USER);
+		  }
 
-	  gtk_grid_attach(props, padding,column,i,1,1);
-	}
-	yoinkle(0,GTK_WIDGET(name));
-	yoinkle(1,GTK_WIDGET(labels[i]));
+		  gtk_grid_attach(props, padding,column,i,1,1);
+	  }
+	  yoinkle(0,GTK_WIDGET(name));
+	  yoinkle(1,GTK_WIDGET(labels[i]));
   }
 
   g_signal_connect(top,"destroy",gtk_main_quit,NULL);
@@ -289,14 +294,14 @@ int main (int argc, char ** argv) {
 		memcpy(player_path + len, LITLEN("player\0"));
 	}
 		
-	}
+
 	GtkApplication *app;
-  int status;
+	int status;
 
-  app = gtk_application_new ("current.song", G_APPLICATION_FLAGS_NONE);
-  g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
-  status = g_application_run (G_APPLICATION (app), argc, argv);
-  g_object_unref (app);
+	app = gtk_application_new ("current.song", G_APPLICATION_FLAGS_NONE);
+	g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
+	status = g_application_run (G_APPLICATION (app), argc, argv);
+	g_object_unref (app);
 
-  return status;
+	return status;
 }
