@@ -111,9 +111,11 @@ target_link_options(queue PUBLIC -pthread)
 
 add_library(rating
   src/rating.c)
+target_link_libraries(rating PUBLIC songdb)
 
 add_library(replaylib
   src/replay.c)
+target_link_libraries(replay PUBLIC songdb)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")

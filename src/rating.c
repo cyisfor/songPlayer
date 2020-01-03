@@ -2,6 +2,9 @@
 #include "pq.h"
 #include "get_pid.h"
 
+#include <signal.h> // SIGSTUFF
+
+
 void rating_init(void) {
 	get_pid_init();
 }
