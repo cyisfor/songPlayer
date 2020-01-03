@@ -148,6 +148,14 @@ on_restart (GtkButton *button, gpointer   user_data) {
 		execlp(player_path, "song_player", NULL);
 	}
 	waitpid(pid, NULL, 0);
+	for(;;) {
+		pid = get_pid("player",sizeof("player")-1);
+		if(pid > 0) {
+			break;
+		}
+		sleep(1);
+	}
+	kill(pid, SIGCONT);
 }
 
 bool stopped = false;
