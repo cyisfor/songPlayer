@@ -1,5 +1,5 @@
-#include "pq.h"
-#include "preparation.h"
+#include "../pq.h"
+#include "../preparation.h"
 #include "ratebytitle.glade.ch"
 
 #include <gtk/gtk.h>

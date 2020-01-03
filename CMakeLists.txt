@@ -135,6 +135,9 @@ linkup(
   TARGETS best dscanner player replaygain_scanner
   LIBRARIES PkgConfig::MEDIA)
 linkup(
+  TARGETS current
+  LIBRARIES rating)
+linkup(
   TARGETS current pause ratebytitle
   LIBRARIES PkgConfig::GUI)
 add_library(synchronize
