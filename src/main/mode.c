@@ -1,5 +1,5 @@
-#include "pq.h"
-#include "queue.h"
+#include "../pq.h"
+#include "../queue.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -46,7 +46,7 @@ int main(void) {
     //queueSetup();
 
   PQinit();
-  queuePrepare();
+  queue_init();
 
   const char* who = getenv("who");
   assert(who!=NULL);
