@@ -2,6 +2,8 @@
 #include "preparation.h"
 #include "settitle.h"
 #include "current.glade.ch"
+#include "rating.h"
+#include "replay.h"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
@@ -110,9 +112,23 @@ on_downvote (GtkButton *button, gpointer   user_data) {
 
 void
 on_replay (GtkButton *button, gpointer   user_data) {
-	do_rating("-1");
+	replay();
 }
-  
+
+char player_path[PATH_MAX];
+
+void
+on_restart (GtkButton *button, gpointer   user_data) {
+	int pid = get_pid("player",sizeof("player")-1);
+	if(pid > 0) {
+		kill(pid, SIGTERM);
+	}
+	int pid = fork();
+	if(pid == 0) {
+		execlp(player_path, "song_player", NULL);
+	}
+}
+
 static void
 activate (GtkApplication* app,
           gpointer        user_data)
@@ -140,7 +156,7 @@ activate (GtkApplication* app,
 	pq_application_name = "current song";
   PQinit();
   replay_init();
-  
+  rating_init();
 	getTopSong = prepare
 		("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
 		 "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
@@ -208,7 +224,14 @@ int main (int argc, char ** argv) {
 			return 0;
 		}
 	}
-  GtkApplication *app;
+	{
+		size_t len = strlen(argv[0]);
+		memcpy(player_path_buf, argv[0], len);
+		player_path_buf[len] = '\0';
+		player_path = dirname(player_path_buf);
+		
+	}
+	GtkApplication *app;
   int status;
 
   app = gtk_application_new ("current.song", G_APPLICATION_FLAGS_NONE);
