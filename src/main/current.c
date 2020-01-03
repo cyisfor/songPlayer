@@ -290,8 +290,8 @@ int main (int argc, char ** argv) {
 		player_path_buf[len] = '\0';
 		player_path = dirname(player_path_buf);
 		len = strlen(player_path);
-		assert(len + sizeof("player\0") - 1<= PATH_MAX);
-		memcpy(player_path + len, LENSTR("player\0"));
+		assert(len + sizeof("player\0") < PATH_MAX);
+		memcpy(player_path_buf + len, LENSTR("player\0"));
 	}
 		
 
