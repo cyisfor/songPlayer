@@ -1,3 +1,3 @@
-void replay_init(void) 
+void replay_init(void);
 
-void replay(void) 
+void replay(void);

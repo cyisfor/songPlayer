@@ -78,3 +78,7 @@ bool declare_pid(const char* application_name) {
 	fsync(lock);
 	return true;
 }
+
+void get_pidInit(void) {
+	configInit();
+}

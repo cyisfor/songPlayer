@@ -139,6 +139,8 @@ activate (GtkApplication* app,
   activated = true;
 	pq_application_name = "current song";
   PQinit();
+  replay_init();
+  
 	getTopSong = prepare
 		("SELECT songs.title,artists.name as artist,albums.title as album,recordings.duration,"
 		 "(SELECT connections.strength FROM connections WHERE connections.blue = songs.id AND connections.red = (select id from mode)) AS rating,"
