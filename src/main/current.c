@@ -133,6 +133,12 @@ char player_path_buf[PATH_MAX];
 char* player_path = player_path_buf;
 
 static
+gboolean wait_for_player(gpointer unused);
+static
+gboolean
+start_player(gpointer unused);
+
+static
 void
 on_restart (GtkButton *button, gpointer   user_data) {
 	int pid = get_pid("player",sizeof("player")-1);
@@ -140,22 +146,38 @@ on_restart (GtkButton *button, gpointer   user_data) {
 		puts("No player found to restart");
 	} else {
 		kill(pid, SIGTERM);
+		g_timeout_add_seconds(1, G_SOURCE_FUNC(start_player), NULL);
 		sleep(1);
 	}
-	pid = fork();
+}
+
+static
+guint waiting_for_player = 0;
+
+static
+gboolean
+start_player(gpointer unused) {
+	int pid = fork();
 	if(pid == 0) {
 		g_warning("Uhhhhh %s", player_path);
 		execlp(player_path, "song_player", NULL);
 	}
 	waitpid(pid, NULL, 0);
-	for(;;) {
-		pid = get_pid("player",sizeof("player")-1);
-		if(pid > 0) {
-			break;
-		}
-		sleep(1);
+	if(waiting_for_player == 0) {
+		waiting_for_player = g_timeout_add_seconds(1, wait_for_player, NULL);
 	}
-	kill(pid, SIGCONT);
+	return G_SOURCE_REMOVE;
+}
+
+static
+gboolean wait_for_player(gpointer unused) {
+	int pid = get_pid("player",sizeof("player")-1);
+	if(pid > 0) {
+		kill(pid, SIGCONT);
+		waiting_for_player = 0;
+		return G_SOURCE_REMOVE;
+	}
+	return G_SOURCE_CONTINUE;
 }
 
 bool stopped = false;
