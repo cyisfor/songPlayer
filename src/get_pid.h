@@ -3,3 +3,4 @@
 
 int get_pid(const char* application_name, ssize_t len);
 bool declare_pid(const char* application_name);
+void get_pid_init(void);

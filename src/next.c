@@ -10,7 +10,7 @@
 
 int main(void) {
   PQinit();
-  configInit();
+  rating_init();
   
   const char* rating = getenv("rating");
   assert(rating!=NULL);

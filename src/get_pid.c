@@ -16,7 +16,7 @@
 const char* g_application_name = "song-player";
 
 const char* get_pidloc(void) {
-	return configAt("pids");
+	return config_at("pids");
 }
 
 int get_pid(const char* application_name, ssize_t len) {
@@ -79,6 +79,6 @@ bool declare_pid(const char* application_name) {
 	return true;
 }
 
-void get_pidInit(void) {
+void get_pid_init(void) {
 	configInit();
 }

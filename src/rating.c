@@ -2,6 +2,10 @@
 #include "pq.h"
 #include "get_pid.h"
 
+void rating_init(void) {
+	get_pid_init();
+}
+
 void do_rating(const char* rating) {
 	const char* values[] = { rating };
 	const int lengths[] = { strlen(rating) };
