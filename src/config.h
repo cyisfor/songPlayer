@@ -1,2 +1,2 @@
-void configInit(void);
-const char* configAt(const char* name);
+void config_init(void);
+const char* config_at(const char* name);
