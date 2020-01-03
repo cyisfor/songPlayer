@@ -140,7 +140,7 @@ linkup(
   LIBRARIES PkgConfig::MEDIA)
 linkup(
   TARGETS current
-  LIBRARIES rating replaylib queu)
+  LIBRARIES rating replaylib queue synchronize)
 linkup(
   TARGETS current pause ratebytitle
   LIBRARIES PkgConfig::GUI)
@@ -159,6 +159,9 @@ target_link_libraries(get_pid PUBLIC PkgConfig::DB)
 linkup(
   TARGETS next pause player rating
   LIBRARIES get_pid)
+linkup(
+  TARGETS next
+  LIBRARIES rating)
 add_library(nextreactor
   src/nextreactor.c)
 target_link_libraries(nextreactor PUBLIC PkgConfig::DB PkgConfig::UV)
