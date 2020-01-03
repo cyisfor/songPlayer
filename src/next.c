@@ -16,11 +16,5 @@ int main(void) {
   assert(rating!=NULL);
 
   do_rating(rating);
-  if(atoi(rating)>0) return 0;
-  if(getenv("nonext")) return 0;
-
-  int pid = get_pid("player",sizeof("player")-1);
-  if(pid > 0)
-	kill(pid,SIGUSR1);
   return 0;
 }

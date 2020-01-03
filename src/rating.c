@@ -1,5 +1,6 @@
 #include "rating.h"
 #include "pq.h"
+#include "get_pid.h"
 
 void do_rating(const char* rating) {
 	const char* values[] = { rating };
@@ -10,4 +11,11 @@ void do_rating(const char* rating) {
 						 "SELECT recording from queue order by id limit 1)), "
 						 "$1) FROM mode",
 						 1,NULL,values,lengths,fmt,0));
+  if(atoi(rating)>0) return 0;
+  if(getenv("nonext")) return 0;
+
+  int pid = get_pid("player",sizeof("player")-1);
+  if(pid > 0)
+	kill(pid,SIGUSR1);
+	
 }
