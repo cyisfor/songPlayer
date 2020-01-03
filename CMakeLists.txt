@@ -125,10 +125,6 @@ function(linkup)
 endfunction(linkup)
 
 linkup(
-  TARGETS rating
-  LIBRARIES config)
-
-linkup(
   TARGETS ${db_targets}
   LIBRARIES songdb)
 linkup(
@@ -152,8 +148,9 @@ add_library(get_pid
   src/config.c
   src/get_pid.c)
 target_link_libraries(get_pid PUBLIC PkgConfig::DB)
+
 linkup(
-  TARGETS next pause player
+  TARGETS next pause player rating
   LIBRARIES get_pid)
 add_library(nextreactor
   src/nextreactor.c)

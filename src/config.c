@@ -19,7 +19,7 @@ static void assureSize(ssize_t size) {
   }
 }
 
-void configInit(void) {
+void config_init(void) {
   const char* location = getenv("location");
   if(location==NULL) {
     const char* home = getenv("HOME");
@@ -49,7 +49,7 @@ void configInit(void) {
   }
 }
 
-const char* configAt(const char* name) {
+const char* config_at(const char* name) {
   assert(configBase > 0);
   ssize_t len = strlen(name);
   assureSize(configBase+2+len);
