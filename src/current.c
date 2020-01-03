@@ -156,7 +156,7 @@ gboolean toggle(GtkImage* image) {
 	}
 	if(stopped) {
 		fputs("starting player ",stdout);
-		kill(pid,SIGCONT);
+		kill(pid,SIGCONT); 
 		stopped = false;
 		gtk_image_set_from_gicon(image, icon.stop,
 										 GTK_ICON_SIZE_LARGE_TOOLBAR);

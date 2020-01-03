@@ -1,3 +1,5 @@
+#include "pq.h"
+
 preparation getTopRecording = NULL;
 void replay_init(void) {
 	preparation getTopRecording = prepare
