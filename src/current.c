@@ -99,29 +99,32 @@ struct buttons {
 struct icons {
 	GIcon* stop;
 	GIcon* play;
-} icon;
+} icon = {};
 
 bool activated = false;
 
+static
 void
 on_upvote (GtkButton *button, gpointer   user_data) {
 	do_rating("1");
 }
 
+static
 void
 on_downvote (GtkButton *button, gpointer   user_data) {
 	do_rating("-1");
 }
 
-
+static
 void
 on_replay (GtkButton *button, gpointer   user_data) {
 	replay();
 }
 
 char player_path_buf[PATH_MAX];
-const char* player_path;
+const char* player_path = player_path_buf;
 
+static
 void
 on_restart (GtkButton *button, gpointer   user_data) {
 	int pid = get_pid("player",sizeof("player")-1);
@@ -138,9 +141,38 @@ on_restart (GtkButton *button, gpointer   user_data) {
 	waitpid(pid, NULL, 0);
 }
 
+static
+gboolean toggle(GtkImage* image) {
+	int pid = get_pid("player",sizeof("player")-1);
+	if(pid < 0) {
+		puts("player not found...");
+		g_timeout_add_seconds(10, toggle, image);
+		return G_SOURCE_REMOVE;
+	}
+	if(stopped) {
+		fputs("starting player ",stdout);
+		kill(pid,SIGCONT);
+		stopped = false;
+		gtk_image_set_from_gicon(image, icon.stop,
+										 GTK_ICON_SIZE_LARGE_TOOLBAR);
+		gtk_widget_set_tooltip_text(image, "Pause");
+	} else {
+		fputs("stopping player ",stdout);
+		kill(pid, SIGSTOP);
+		stopped = true;
+		gtk_image_set_from_gicon(image, icon.play,
+										 GTK_ICON_SIZE_LARGE_TOOLBAR);
+		gtk_widget_set_tooltip_text(image, "Play");
+	}
+	printf("%d\n",pid);
+	return G_SOURCE_REMOVE;
+}
+
+static
 void
 on_stopper (GtkButton *button, gpointer   user_data) {
-	
+	toggle(GTK_IMAGE(user_data));
+}
 
 static void
 activate (GtkApplication* app,
