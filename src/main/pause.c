@@ -23,12 +23,14 @@ struct icons {
 
 bool stopped = false;
 
+#define G_SOURCE_CALLBACK(a) ((GSourceFunc)a)
+
 gboolean toggle(gpointer udata) {
 	GtkImage* image = GTK_IMAGE(udata);
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid < 0) {
 		puts("player not found...");
-		g_timeout_add_seconds(10,G_SOURCE_CALLBACK(toggle),derp);
+		g_timeout_add_seconds(10,G_SOURCE_CALLBACK(toggle),udata);
 		return G_SOURCE_REMOVE;
 	}
 	if(stopped) {
