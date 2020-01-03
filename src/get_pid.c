@@ -80,5 +80,5 @@ bool declare_pid(const char* application_name) {
 }
 
 void get_pid_init(void) {
-	configInit();
+	config_init();
 }
