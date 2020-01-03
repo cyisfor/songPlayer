@@ -1,6 +1,6 @@
-#include "nextreactor.h"
-#include "pq.h"
-#include "preparation.h"
+#include "../nextreactor.h"
+#include "../pq.h"
+#include "../preparation.h"
 
 #include <uv.h>
 #include <glib.h>

@@ -1,5 +1,5 @@
-#include "pq.h"
-#include "preparation.h"
+#include "../pq.h"
+#include "../preparation.h"
 #include <string.h>
 
 int main(int argc, char *argv[])

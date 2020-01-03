@@ -1,5 +1,5 @@
-#include "pq.h"
-#include "preparation.h"
+#include "../pq.h"
+#include "../preparation.h"
 
 #include <gst/gst.h> // just for GST_SECOND
 

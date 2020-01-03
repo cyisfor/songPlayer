@@ -1,5 +1,5 @@
-#include "preparation.h"
-#include "pq.h"
+#include "../preparation.h"
+#include "../pq.h"
 
 #include <string.h> // memcpy
 #include <unistd.h> // fsync, 

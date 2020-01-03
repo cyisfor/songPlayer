@@ -1,8 +1,8 @@
-#include "select.h"
-#include "pq.h"
-#include "preparation.h"
-#include "synchronize.h"
-#include "queue.h"
+#include "../select.h"
+#include "../pq.h"
+#include "../preparation.h"
+#include "../synchronize.h"
+#include "../queue.h"
 
 #include <sys/time.h>
 #include <signal.h>

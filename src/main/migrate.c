@@ -1,4 +1,4 @@
-#include "pq.h"
+#include "../pq.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>

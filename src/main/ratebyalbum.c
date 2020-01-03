@@ -1,4 +1,4 @@
-#include "pq.h"
+#include "../pq.h"
 
 #include <signal.h>
 #include <stdio.h>

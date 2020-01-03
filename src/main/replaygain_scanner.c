@@ -1,6 +1,6 @@
-#include "urlcodec.h"
-#include "pq.h"
-#include "preparation.h"
+#include "../urlcodec.h"
+#include "../pq.h"
+#include "../preparation.h"
 
 #include <stdio.h>
 #include <stdlib.h>

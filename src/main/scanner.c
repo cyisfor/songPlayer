@@ -1,4 +1,4 @@
-#include "urlcodec.h"
+#include "../urlcodec.h"
 
 #include <stdio.h>
 #include <stdlib.h>
