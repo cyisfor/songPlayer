@@ -2,11 +2,11 @@
 #define _XOPEN_SOURCE 900      /* See feature_test_macros(7) */
 
 #include "libguess/libguess.h"
-#include "pq.h"
-#include "preparation.h"
-#include "hash.h"
+#include "../pq.h"
+#include "../preparation.h"
+#include "../hash.h"
 
-#include "derpstring.h"
+#include "../derpstring.h"
 
 #include <sys/wait.h> // waitpid
 
