@@ -140,10 +140,11 @@ on_restart (GtkButton *button, gpointer   user_data) {
 		puts("No player found to restart");
 	} else {
 		kill(pid, SIGTERM);
+		sleep(1);
 	}
 	pid = fork();
 	if(pid == 0) {
-		sleep(1);
+		g_warning("Uhhhhh %s", player_path);
 		execlp(player_path, "song_player", NULL);
 	}
 	waitpid(pid, NULL, 0);
