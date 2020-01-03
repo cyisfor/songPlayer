@@ -16,12 +16,8 @@
 #include <stdint.h>
 #include <string.h>
 
-struct togglederp {
-	GtkImage* image;
-	GtkButton* button;
-};
-
-gboolean toggle(struct togglederp* derp) {
+gboolean toggle(gpointer udata) {
+	GtkImage* image = GTK_IMAGE(udata);
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid < 0) {
 		puts("player not found...");
@@ -32,16 +28,16 @@ gboolean toggle(struct togglederp* derp) {
 		fputs("starting player ",stdout);
 		kill(pid,SIGCONT);
 		stopped = false;
-		gtk_derp->image_set_from_gicon(derp->image, stop,
+		gtk_derp->image_set_from_gicon(image, stop,
 									   GTK_ICON_SIZE_LARGE_TOOLBAR);
-		gtk_widget_set_tooltip_text(GTK_WIDGET(derp->button), "Pause");
+		gtk_widget_set_tooltip_text(GTK_WIDGET(image), "Pause");
 	} else {
 		fputs("stopping player ",stdout);
 		kill(pid, SIGSTOP);
 		stopped = true;
-		gtk_derp->image_set_from_gicon(derp->image, play,
+		gtk_derp->image_set_from_gicon(image, play,
 									   GTK_ICON_SIZE_LARGE_TOOLBAR);
-		gtk_widget_set_tooltip_text(GTK_WIDGET(derp->button), "Play");
+		gtk_widget_set_tooltip_text(GTK_WIDGET(image), "Play");
 	}
 	printf("%d\n",pid);
 	return G_SOURCE_REMOVE;
@@ -72,7 +68,7 @@ int main(void) {
 
   GtkBuilder* builder = gtk_builder_new_from_string((gchar*)gladeFile,gladeFile_length);
   GtkWidget* top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
-	GtkImage* image = GTK_IMAGE(gtk_builder_get_object(builder,"image"));
+  GtkImage* image = GTK_IMAGE(gtk_builder_get_object(builder,"image"));
   gtk_window_stick(GTK_WINDOW(top));
   gtk_window_set_keep_above(GTK_WINDOW(top),TRUE);
 
@@ -99,7 +95,8 @@ int main(void) {
 	// just edit the source to configure
 	gtk_window_move(GTK_WINDOW(top),0,350-32);
 #endif
-  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(onkey),NULL);
+
+  g_signal_connect(G_OBJECT(top),"button-release-event",G_CALLBACK(onkey),image);
 	
   gtk_widget_show_all(top);
   gtk_main();
