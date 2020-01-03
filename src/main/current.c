@@ -196,7 +196,7 @@ activate (GtkApplication* app,
   props = GET(GRID,"properties");
   title = GET(LABEL,"title");
 #define X(name) btn.name = GET(BUTTON, #name); \
-	g_signal_connect(btn.name, "clicked", on_ ## name, NULL);
+	g_signal_connect(btn.name, "clicked", G_CALLBACK(on_ ## name), NULL);
 #define C ;
 	FOR_BUTTONS;
 #undef C
@@ -233,7 +233,7 @@ activate (GtkApplication* app,
 	   "ORDER BY queue.id ASC LIMIT 2"
 		  );
 
-  GtkCssProvider * odd_style = gtk_css_provider_get_default ();
+  GtkCssProvider * odd_style = gtk_css_provider_new ();
   GError* gerror = NULL;
   gtk_css_provider_load_from_data
 	  (odd_style,
