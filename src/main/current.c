@@ -138,9 +138,9 @@ on_restart (GtkButton *button, gpointer   user_data) {
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid <= 0) {
 		puts("No player found to restart");
-		return;
-	};
-	kill(pid, SIGTERM);
+	} else {
+		kill(pid, SIGTERM);
+	}
 	pid = fork();
 	if(pid == 0) {
 		sleep(1);
@@ -199,6 +199,7 @@ activate (GtkApplication* app,
   props = GET(GRID,"properties");
   title = GET(LABEL,"title");
   stopper_image = GET(IMAGE,"stopper_image");
+  g_assert(stopper_image);
 #define X(name) btn.name = GET(BUTTON, #name); \
 	g_signal_connect(btn.name, "clicked", G_CALLBACK(on_ ## name), NULL);
 #define C ;
