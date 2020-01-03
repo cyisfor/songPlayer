@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 	PQinit();
-	queuePrepare();
+	replay_init();
 	replay();
 	return 0;
 }

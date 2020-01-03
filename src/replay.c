@@ -6,6 +6,7 @@
 
 static preparation getTopRecording = NULL;
 void replay_init(void) {
+	queue_init();
 	getTopRecording = prepare
 		("SELECT queue.recording"
 		 " FROM queue ORDER BY queue.id ASC LIMIT 1");

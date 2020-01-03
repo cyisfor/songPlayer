@@ -328,7 +328,7 @@ static void expireProblems(void) {
 												 0,NULL,NULL,NULL,0));
 }
 
-void queuePrepare(void) {
+void queue_init(void) {
   /* these are used by queueRescore outside of the queuing thread */
 	scoreByLast = prepare("SELECT timeConnectionThingy(1)");
 	rateByPlayer = prepare("SELECT rate(0,1)");
