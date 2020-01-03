@@ -22,7 +22,7 @@ bus_call (GstBus     *bus,
 	{
 		gint64 len = -1;
 		if(gst_element_query_duration (panpipe, GST_FORMAT_TIME, &len)) {
-			printf("Found duration %ld\n",len);
+			printf("Found duration %.4Lf\n",len / 1000000000.0L);
 			lastDuration = len;
 			gst_element_set_state (panpipe, GST_STATE_NULL);
 			g_main_loop_quit(loop);
@@ -168,7 +168,7 @@ main (int argc, char ** argv)
 			g_main_loop_run(loop);
 			if(lastDuration>0) {
 				char stdurr[0x100];
-				lengths[1] = snprintf(stdurr,0x100,"%lu",lastDuration);
+				lengths[1] = snprintf(stdurr,0x100,"%ld",lastDuration);
 				values[1] = stdurr;
 				PQcheckClear(prepare_exec(setDuration,
 																	2,values,lengths,fmt,0));

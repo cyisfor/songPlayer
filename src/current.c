@@ -85,9 +85,22 @@ gboolean update_properties(gpointer udata) {
   return G_SOURCE_CONTINUE;
 }
 
+#define FOR_BUTTONS X(upvote) C X(downvote) C X(replay) C X(restart) C X(stopper)
+struct buttons {
+#define X(name) GtkButton* name
+#define C ;
+	FOR_BUTTONS;
+#undef C
+#undef X
+};
 
   
 bool activated = false;
+
+void
+on_upvote (GtkButton *button, gpointer   user_data) {
+	
+}
   
 static void
 activate (GtkApplication* app,
@@ -99,11 +112,16 @@ activate (GtkApplication* app,
 	return;
   }
   builder = gtk_builder_new_from_string((const char*)gladeFile,gladeFile_length);
-  top = GTK_WIDGET(gtk_builder_get_object(builder,"top"));
-  props = GTK_GRID(gtk_builder_get_object(builder,"properties"));
-  title =
-  	GTK_LABEL(gtk_builder_get_object(builder,"title"));
-
+#define GET(what, name) GTK_ ## what(gtk_builder_get_object(builder,name));
+  top = GET(WIDGET, "top");
+  props = GET(GRID,"properties");
+  title = GET(LABEL,"title");
+#define X(name) btn.name = GET(BUTTON, #name); \
+	g_signal_connect(btn.name, "clicked", on_ ## name, NULL);
+#define C ;
+	FOR_BUTTONS;
+#undef C
+#undef X
 
   gtk_application_add_window(app,GTK_WINDOW(top));
 

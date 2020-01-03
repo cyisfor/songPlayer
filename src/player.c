@@ -441,6 +441,7 @@ int main (int argc, char ** argv)
   GstElement* converter = gst_element_factory_make("audioconvert",NULL);
 	GstElement* resampler = gst_element_factory_make("audioresample",NULL);
   GstElement* adjuster = NULL;
+  GstElement* limiter = NULL;
 
   if(!getenv("noreplaygain")) {
     adjuster = gst_element_factory_make("rgvolume", NULL);
@@ -455,6 +456,7 @@ int main (int argc, char ** argv)
     g_object_set (adjuster, "album-mode", FALSE, NULL);
     g_object_set (adjuster, "pre-amp", 6.0, NULL);
     g_object_set (adjuster, "headroom", 1.0, NULL);
+	limiter = gst_element_factory_make("rglimiter", NULL);
   }  
 
   GstElement* sink = gst_element_factory_make("alsasink", NULL);
@@ -479,7 +481,7 @@ int main (int argc, char ** argv)
 
   if(adjuster)
     gst_bin_add_many (GST_BIN (pipeline), src, decoder,
-		      adjuster, converter, resampler,
+		      adjuster, limiter, converter, resampler,
 		      sink, NULL);
   else
 	  gst_bin_add_many (GST_BIN (pipeline), src, decoder, converter, resampler, sink, NULL);
