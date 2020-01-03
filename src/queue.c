@@ -351,7 +351,7 @@ static void* queueChecker(void* arg) {
   PQinit();
   g_message("PQ Queue conn %p",PQconn);
   myPQtest = PQconn;
-  queuePrepare();
+  queue_init();
 	numQueued = prepare("SELECT COUNT(id) FROM queue");
 	
 #define FROM_BEST_SONG "FROM songs LEFT OUTER JOIN ratings ON ratings.id = songs.id WHERE songs.id NOT IN (" \

@@ -104,6 +104,7 @@ install(TARGETS ${targets}
 
 add_library(queue
   src/queue.c
+  src/select.c
   src/adjust.c)
 target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB m)
 target_compile_options(queue PUBLIC -pthread)

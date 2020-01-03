@@ -1,12 +1,12 @@
-#include "pq.h"
-#include "select.h"
+#include "../pq.h"
+#include "../select.h"
 
 #include <stdlib.h> // atoi
 #include <signal.h>
 
 int main(void) {
 
-  selectSetup();
+  select_init();
 
   PGresult* result =
     PQexecParams(PQconn,"SELECT pid FROM pids WHERE id = 0",
