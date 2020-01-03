@@ -16,6 +16,11 @@
 #include <stdint.h>
 #include <string.h>
 
+struct icons {
+	GIcon* stop;
+	GIcon* play;
+} icon = {};
+
 gboolean toggle(gpointer udata) {
 	GtkImage* image = GTK_IMAGE(udata);
 	int pid = get_pid("player",sizeof("player")-1);
@@ -28,14 +33,14 @@ gboolean toggle(gpointer udata) {
 		fputs("starting player ",stdout);
 		kill(pid,SIGCONT);
 		stopped = false;
-		gtk_derp->image_set_from_gicon(image, stop,
+		gtk_derp->image_set_from_gicon(image, icon.stop,
 									   GTK_ICON_SIZE_LARGE_TOOLBAR);
 		gtk_widget_set_tooltip_text(GTK_WIDGET(image), "Pause");
 	} else {
 		fputs("stopping player ",stdout);
 		kill(pid, SIGSTOP);
 		stopped = true;
-		gtk_derp->image_set_from_gicon(image, play,
+		gtk_derp->image_set_from_gicon(image, icon.play,
 									   GTK_ICON_SIZE_LARGE_TOOLBAR);
 		gtk_widget_set_tooltip_text(GTK_WIDGET(image), "Play");
 	}
@@ -58,7 +63,7 @@ gboolean onkey(GtkWidget* top, GdkEventButton* e, gpointer udata) {
 }
 
 int main(void) {
-  configInit();
+  config_init();
   if(!declare_pid("pauser")) {
 	puts("already pausing");
 	return 1;
@@ -74,12 +79,12 @@ int main(void) {
 
 	bool stopped = false;
 	GError* err = NULL;
-	GIcon* stop = g_icon_new_for_string("process-stop",&err);
-	if(stop == NULL) {
+	icon.stop = g_icon_new_for_string("process-stop",&err);
+	if(icon.stop == NULL) {
 		g_error("um stop");
 	}
-	GIcon* play = g_icon_new_for_string("media-playback-start",&err);
-	if(play == NULL) {
+	icon.play = g_icon_new_for_string("media-playback-start",&err);
+	if(icon.play == NULL) {
 		g_error("um play");
 	}
 	
