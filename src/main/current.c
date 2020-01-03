@@ -268,7 +268,7 @@ activate (GtkApplication* app,
 	   "LEFT OUTER JOIN artists ON recordings.artist = artists.id "
 	   "ORDER BY queue.id ASC LIMIT 2"
 		  );
-
+  assert(getTopSong);
   GtkCssProvider * odd_style = gtk_css_provider_new ();
   GError* gerror = NULL;
   gtk_css_provider_load_from_data

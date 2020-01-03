@@ -6,6 +6,7 @@ void replay_init(void) {
 	preparation getTopRecording = prepare
 		("SELECT queue.recording"
 		 " FROM queue ORDER BY queue.id ASC LIMIT 1");
+	g_assert(getTopRecording);
 }
 
 void replay(void) {
