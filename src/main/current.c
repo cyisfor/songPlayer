@@ -6,6 +6,8 @@
 #include "../replay.h"
 #include "../get_pid.h"
 
+#include <sys/wait.h> // waitpid
+
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <error.h>
@@ -153,7 +155,7 @@ gboolean toggle(GtkImage* image) {
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid < 0) {
 		puts("player not found...");
-		g_timeout_add_seconds(10, toggle, image);
+		g_timeout_add_seconds(10, G_SOURCE_FUNC(toggle), image);
 		return G_SOURCE_REMOVE;
 	}
 	if(stopped) {
