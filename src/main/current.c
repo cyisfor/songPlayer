@@ -11,6 +11,8 @@
 #include <error.h>
 #include <string.h> // strncpy
 #include <stdbool.h>
+#include <libgen.h> // dirname
+
 
 // meh!
 const char* rows[] = {
@@ -125,7 +127,7 @@ on_replay (GtkButton *button, gpointer   user_data) {
 }
 
 char player_path_buf[PATH_MAX];
-const char* player_path = player_path_buf;
+char* player_path = player_path_buf;
 
 static
 void
@@ -291,7 +293,7 @@ int main (int argc, char ** argv) {
 		player_path = dirname(player_path_buf);
 		len = strlen(player_path);
 		assert(len + sizeof("player\0") < PATH_MAX);
-		memcpy(player_path_buf + len, LENSTR("player\0"));
+		memcpy(player_path + len, LENSTR("player\0"));
 	}
 		
 
