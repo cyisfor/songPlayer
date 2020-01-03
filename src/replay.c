@@ -4,9 +4,9 @@
 #include <assert.h> // 
 
 
-preparation getTopRecording = NULL;
+static preparation getTopRecording = NULL;
 void replay_init(void) {
-	preparation getTopRecording = prepare
+	getTopRecording = prepare
 		("SELECT queue.recording"
 		 " FROM queue ORDER BY queue.id ASC LIMIT 1");
 	assert(getTopRecording);
