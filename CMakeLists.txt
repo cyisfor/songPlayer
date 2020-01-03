@@ -96,7 +96,7 @@ set(targets
 
 foreach(target IN LISTS targets)
   add_executable("${target}"
-	"src/${target}.c")
+	"src/main/${target}.c")
 endforeach()
 
 install(TARGETS ${targets}
@@ -108,6 +108,12 @@ add_library(queue
 target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB m)
 target_compile_options(queue PUBLIC -pthread)
 target_link_options(queue PUBLIC -pthread)
+
+add_library(rating
+  src/rating.c)
+
+add_library(replay
+  src/replay.c)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
