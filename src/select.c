@@ -41,10 +41,10 @@ void selectDone(void) {
   selectNext();
 }
 
-void selectSetup(void) {
+void select_init(void) {
   queueStart();
   PQinit();
-  queuePrepare();
+  queue_init();
 
   currentSongWasPlayed = prepare
 		("SELECT songWasPlayed(recording) FROM (select recording FROM queue ORDER BY id ASC LIMIT 1) AS fuckeverything");

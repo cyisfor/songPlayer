@@ -414,7 +414,7 @@ int main (int argc, char ** argv)
   arguments = argv;
   signalsSetup();
   gst_init (NULL,NULL);
-  selectSetup();
+  select_init();
   onSignal(SIGUSR1,signalNext);
   onSignal(SIGUSR2,restartPlayer);
 
