@@ -115,16 +115,20 @@ on_replay (GtkButton *button, gpointer   user_data) {
 	replay();
 }
 
-char player_path[PATH_MAX];
+char player_path_buf[PATH_MAX];
+const char* player_path;
 
 void
 on_restart (GtkButton *button, gpointer   user_data) {
 	int pid = get_pid("player",sizeof("player")-1);
-	if(pid > 0) {
-		kill(pid, SIGTERM);
-	}
+	if(pid <= 0) {
+		puts("No player found to restart");
+		return;
+	};
+	kill(pid, SIGTERM);
 	int pid = fork();
 	if(pid == 0) {
+		sleep(1);
 		execlp(player_path, "song_player", NULL);
 	}
 }
@@ -229,6 +233,10 @@ int main (int argc, char ** argv) {
 		memcpy(player_path_buf, argv[0], len);
 		player_path_buf[len] = '\0';
 		player_path = dirname(player_path_buf);
+		len = strlen(player_path);
+		assert(len + LITSIZ("player\0") <= PATH_MAX);
+		memcpy(player_path + len, LITLEN("player\0"));
+	}
 		
 	}
 	GtkApplication *app;
