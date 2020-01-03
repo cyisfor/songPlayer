@@ -1,6 +1,7 @@
-#include "pq.h"
-#include "config.h"
-#include "get_pid.h"
+#include "../pq.h"
+#include "../config.h"
+#include "../get_pid.h"
+#include "../rating.h"
 
 #include <signal.h>
 #include <stdio.h>
