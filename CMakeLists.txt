@@ -38,7 +38,7 @@ d2h(pause)
 d2h(ratebytitle)
 
 add_executable(nowplaying-make
-  src/nowplaying-make.c)
+  src/main/nowplaying-make.c)
 
 add_custom_command(
   OUTPUT "nowplaying.fields.ch"
@@ -112,7 +112,7 @@ target_link_options(queue PUBLIC -pthread)
 add_library(rating
   src/rating.c)
 
-add_library(replay
+add_library(replaylib
   src/replay.c)
 
 function(linkup)
