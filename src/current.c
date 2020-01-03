@@ -99,7 +99,18 @@ bool activated = false;
 
 void
 on_upvote (GtkButton *button, gpointer   user_data) {
-	
+	do_rating("1");
+}
+
+void
+on_downvote (GtkButton *button, gpointer   user_data) {
+	do_rating("-1");
+}
+
+
+void
+on_replay (GtkButton *button, gpointer   user_data) {
+	do_rating("-1");
 }
   
 static void
