@@ -298,8 +298,8 @@ int main (int argc, char ** argv) {
 		player_path_buf[len] = '\0';
 		player_path = dirname(player_path_buf);
 		len = strlen(player_path);
-		assert(len + sizeof("player\0") < PATH_MAX);
-		memcpy(player_path + len, LENSTR("player\0"));
+		assert(len + sizeof("/player\0") < PATH_MAX);
+		memcpy(player_path + len, LENSTR("/player\0"));
 	}
 		
 
@@ -309,7 +309,7 @@ int main (int argc, char ** argv) {
 	app = gtk_application_new ("current.song", G_APPLICATION_FLAGS_NONE);
 	g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
 	status = g_application_run (G_APPLICATION (app), argc, argv);
-	g_object_unref (app);
+//	g_object_unref (app); gtk sucks
 
 	return status;
 }
