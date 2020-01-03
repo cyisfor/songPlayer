@@ -162,14 +162,14 @@ gboolean toggle(GtkImage* image) {
 		stopped = false;
 		gtk_image_set_from_gicon(image, icon.stop,
 										 GTK_ICON_SIZE_LARGE_TOOLBAR);
-		gtk_widget_set_tooltip_text(image, "Pause");
+		gtk_widget_set_tooltip_text(GTK_WIDGET(btn.stopper), "Pause");
 	} else {
 		fputs("stopping player ",stdout);
 		kill(pid, SIGSTOP);
 		stopped = true;
 		gtk_image_set_from_gicon(image, icon.play,
 										 GTK_ICON_SIZE_LARGE_TOOLBAR);
-		gtk_widget_set_tooltip_text(image, "Play");
+		gtk_widget_set_tooltip_text(GTK_WIDGET(btn.stopper), "Play");
 	}
 	printf("%d\n",pid);
 	return G_SOURCE_REMOVE;
