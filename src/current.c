@@ -94,9 +94,13 @@ struct buttons {
 	FOR_BUTTONS;
 #undef C
 #undef X
-};
+} btn = {};
 
-  
+struct icons {
+	GIcon* stop;
+	GIcon* play;
+} icon;
+
 bool activated = false;
 
 void
@@ -126,12 +130,17 @@ on_restart (GtkButton *button, gpointer   user_data) {
 		return;
 	};
 	kill(pid, SIGTERM);
-	int pid = fork();
+	pid = fork();
 	if(pid == 0) {
 		sleep(1);
 		execlp(player_path, "song_player", NULL);
 	}
+	waitpid(pid, NULL, 0);
 }
+
+void
+on_stopper (GtkButton *button, gpointer   user_data) {
+	
 
 static void
 activate (GtkApplication* app,
@@ -154,6 +163,16 @@ activate (GtkApplication* app,
 #undef C
 #undef X
 
+	GError* err = NULL;
+	icon.stop = g_icon_new_for_string("process-stop",&err);
+	if(icon.stop == NULL) {
+		g_error("um stop");
+	}
+	icon.play = g_icon_new_for_string("media-playback-start",&err);
+	if(icon.play == NULL) {
+		g_error("um play");
+	}
+	
   gtk_application_add_window(app,GTK_WINDOW(top));
 
   activated = true;
