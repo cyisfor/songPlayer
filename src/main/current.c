@@ -1,10 +1,10 @@
-#include "pq.h"
-#include "preparation.h"
-#include "settitle.h"
+#include "../pq.h"
+#include "../preparation.h"
+#include "../settitle.h"
 #include "current.glade.ch"
-#include "rating.h"
-#include "replay.h"
-#include "get_pid.h"
+#include "../rating.h"
+#include "../replay.h"
+#include "../get_pid.h"
 
 #include <gtk/gtk.h>
 #include <stdio.h>
@@ -290,8 +290,8 @@ int main (int argc, char ** argv) {
 		player_path_buf[len] = '\0';
 		player_path = dirname(player_path_buf);
 		len = strlen(player_path);
-		assert(len + LITSIZ("player\0") <= PATH_MAX);
-		memcpy(player_path + len, LITLEN("player\0"));
+		assert(len + sizeof("player\0") - 1<= PATH_MAX);
+		memcpy(player_path + len, LENSTR("player\0"));
 	}
 		
 
