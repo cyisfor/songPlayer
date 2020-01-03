@@ -116,7 +116,6 @@ target_link_libraries(rating PUBLIC songdb)
 add_library(replaylib
   src/replay.c)
 target_link_libraries(replaylib PUBLIC songdb)
-target_link_libraries(replay PRIVATE replaylib)
 
 function(linkup)
   cmake_parse_arguments(PARSE_ARGV 0 A "" "" "TARGETS;LIBRARIES")
@@ -131,6 +130,10 @@ linkup(
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES queue PkgConfig::GLIB)
+linkup(
+  TARGETS replay
+  LIBRARIES replaylib enqueue)
+
 target_link_libraries(playlist PUBLIC PkgConfig::GLIB)
 linkup(
   TARGETS best dscanner player replaygain_scanner
