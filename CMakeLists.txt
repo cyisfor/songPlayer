@@ -136,7 +136,7 @@ linkup(
   LIBRARIES PkgConfig::MEDIA)
 linkup(
   TARGETS current
-  LIBRARIES rating)
+  LIBRARIES rating replaylib)
 linkup(
   TARGETS current pause ratebytitle
   LIBRARIES PkgConfig::GUI)
