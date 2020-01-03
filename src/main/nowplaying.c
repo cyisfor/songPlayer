@@ -1,8 +1,8 @@
 #define _XOPEN_SOURCE
 #define _XOPEN_SOURCE_EXTENDED // symlink
-#include "nextreactor.h"
-#include "pq.h"
-#include "preparation.h"
+#include "../nextreactor.h"
+#include "../pq.h"
+#include "../preparation.h"
 
 #include <fcntl.h>
 #include <string.h>

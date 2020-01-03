@@ -125,6 +125,10 @@ function(linkup)
 endfunction(linkup)
 
 linkup(
+  TARGETS rating
+  LIBRARIES config)
+
+linkup(
   TARGETS ${db_targets}
   LIBRARIES songdb)
 linkup(
