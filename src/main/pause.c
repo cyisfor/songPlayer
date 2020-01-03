@@ -1,8 +1,8 @@
-#include "pq.h"
-#include "preparation.h"
-#include "get_pid.h"
+#include "../pq.h"
+#include "../preparation.h"
+#include "../get_pid.h"
 #include "pause.glade.ch"
-#include "config.h"
+#include "../config.h"
 
 #include <gtk/gtk.h>
 #include <glib.h>
@@ -15,6 +15,38 @@
 
 #include <stdint.h>
 #include <string.h>
+
+struct togglederp {
+	GtkImage* image;
+	GtkButton* button;
+};
+
+gboolean toggle(struct togglederp* derp) {
+	int pid = get_pid("player",sizeof("player")-1);
+	if(pid < 0) {
+		puts("player not found...");
+		g_timeout_add_seconds(10,toggle,NULL);
+		return G_SOURCE_REMOVE;
+	}
+	if(stopped) {
+		fputs("starting player ",stdout);
+		kill(pid,SIGCONT);
+		stopped = false;
+		gtk_derp->image_set_from_gicon(derp->image, stop,
+									   GTK_ICON_SIZE_LARGE_TOOLBAR);
+		gtk_widget_set_tooltip_text(GTK_WIDGET(derp->button), "Pause");
+	} else {
+		fputs("stopping player ",stdout);
+		kill(pid, SIGSTOP);
+		stopped = true;
+		gtk_derp->image_set_from_gicon(derp->image, play,
+									   GTK_ICON_SIZE_LARGE_TOOLBAR);
+		gtk_widget_set_tooltip_text(GTK_WIDGET(derp->button), "Play");
+	}
+	printf("%d\n",pid);
+	return G_SOURCE_REMOVE;
+}
+
 
 int main(void) {
   configInit();
@@ -40,29 +72,6 @@ int main(void) {
 	GIcon* play = g_icon_new_for_string("media-playback-start",&err);
 	if(play == NULL) {
 		g_error("um play");
-	}
-	gboolean toggle() {
-		int pid = get_pid("player",sizeof("player")-1);
-		if(pid < 0) {
-			puts("player not found...");
-			g_timeout_add_seconds(10,toggle,NULL);
-			return G_SOURCE_REMOVE;
-		}
-		if(stopped) {
-			fputs("starting player ",stdout);
-			kill(pid,SIGCONT);
-			stopped = false;
-			gtk_image_set_from_gicon(image, stop, GTK_ICON_SIZE_LARGE_TOOLBAR);
-			gtk_widget_set_tooltip_text(image, "Pause");
-		} else {
-			fputs("stopping player ",stdout);
-			kill(pid, SIGSTOP);
-			stopped = true;
-			gtk_image_set_from_gicon(image, play, GTK_ICON_SIZE_LARGE_TOOLBAR);
-			gtk_widget_set_tooltip_text(image, "Play");
-		}
-		printf("%d\n",pid);
-		return G_SOURCE_REMOVE;
 	}
 	
 	gboolean onkey(GtkWidget* top, GdkEventButton* e, gpointer udata) {
