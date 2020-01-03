@@ -44,6 +44,7 @@ GtkWidget* top = NULL;
 GtkGrid* props = NULL;
 GtkLabel* title = NULL;
 GtkLabel* labels[NUM_ROWS] = {};
+GtkImage* stopper_image = NULL;
 
 struct update_properties_info {
 };
@@ -150,7 +151,7 @@ on_restart (GtkButton *button, gpointer   user_data) {
 
 bool stopped = false;
 
-tstatic
+static
 gboolean toggle(GtkImage* image) {
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid < 0) {
@@ -180,7 +181,7 @@ gboolean toggle(GtkImage* image) {
 static
 void
 on_stopper (GtkButton *button, gpointer   user_data) {
-	toggle(GTK_IMAGE(user_data));
+	toggle(stopper_image);
 }
 
 static void
