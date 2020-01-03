@@ -25,7 +25,7 @@ gboolean toggle(struct togglederp* derp) {
 	int pid = get_pid("player",sizeof("player")-1);
 	if(pid < 0) {
 		puts("player not found...");
-		g_timeout_add_seconds(10,toggle,NULL);
+		g_timeout_add_seconds(10,G_SOURCE_CALLBACK(toggle),derp);
 		return G_SOURCE_REMOVE;
 	}
 	if(stopped) {
@@ -47,6 +47,19 @@ gboolean toggle(struct togglederp* derp) {
 	return G_SOURCE_REMOVE;
 }
 
+gboolean onkey(GtkWidget* top, GdkEventButton* e, gpointer udata) {
+	if(e->state & GDK_CONTROL_MASK) {
+		gtk_window_begin_move_drag(GTK_WINDOW(top), e->button,
+								   e->x_root, e->y_root, e->time);
+		return FALSE;
+	}
+	if(e->state & GDK_SHIFT_MASK) {
+		gtk_main_quit();
+		return TRUE;
+	}
+	toggle(udata);
+	return TRUE;
+}
 
 int main(void) {
   configInit();
@@ -74,19 +87,6 @@ int main(void) {
 		g_error("um play");
 	}
 	
-	gboolean onkey(GtkWidget* top, GdkEventButton* e, gpointer udata) {
-		if(e->state & GDK_CONTROL_MASK) {
-			gtk_window_begin_move_drag(GTK_WINDOW(top), e->button, e->x_root, e->y_root, e->time);
-			return FALSE;
-		}
-		if(e->state & GDK_SHIFT_MASK) {
-			gtk_main_quit();
-			return TRUE;
-		}
-		toggle(NULL);
-		return TRUE;
-	}
-
 #if INITAL_DRAG
 	gulong first_configure = 0;
 	gboolean drag_it(GtkWidget* top, GdkEventConfigure* e, gpointer udata) {
