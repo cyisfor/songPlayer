@@ -146,9 +146,10 @@ on_restart (GtkButton *button, gpointer   user_data) {
 		puts("No player found to restart");
 	} else {
 		kill(pid, SIGTERM);
-		g_timeout_add_seconds(1, G_SOURCE_FUNC(start_player), NULL);
+		waitpid(pid, NULL, 0);
 		sleep(1);
 	}
+	g_timeout_add_seconds(1, G_SOURCE_FUNC(start_player), NULL);
 }
 
 static
@@ -162,7 +163,7 @@ start_player(gpointer unused) {
 		g_warning("Uhhhhh %s", player_path);
 		execlp(player_path, "song_player", NULL);
 	}
-	waitpid(pid, NULL, 0);
+	//waitpid(pid, NULL, 0);
 	if(waiting_for_player == 0) {
 		waiting_for_player = g_timeout_add_seconds(1, wait_for_player, NULL);
 	}
