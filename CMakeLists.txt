@@ -102,11 +102,15 @@ endforeach()
 install(TARGETS ${targets}
   DESTINATION "${CMAKE_INSTALL_PREFIX}/bin")
 
+add_library(synchronize
+  src/select.c
+  src/synchronize.c)
+target_link_libraries(synchronize PUBLIC PkgConfig::GLIB PkgConfig::DB queue)
+
 add_library(queue
   src/queue.c
-  src/select.c
   src/adjust.c)
-target_link_libraries(queue PUBLIC songdb PkgConfig::GLIB m)
+target_link_libraries(queue PUBLIC songdb synchronize PkgConfig::GLIB m)
 target_compile_options(queue PUBLIC -pthread)
 target_link_options(queue PUBLIC -pthread)
 
@@ -145,10 +149,6 @@ linkup(
 linkup(
   TARGETS current pause ratebytitle
   LIBRARIES PkgConfig::GUI)
-add_library(synchronize
-  src/select.c
-  src/synchronize.c)
-target_link_libraries(synchronize PUBLIC PkgConfig::GLIB PkgConfig::DB queue)
 linkup(
   TARGETS done enqueue enqueuePath mode player replay
   LIBRARIES synchronize)
